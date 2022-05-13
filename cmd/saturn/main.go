@@ -1,7 +1,14 @@
 package main
 
-import "github.com/elinx/saturn/pkg/epub"
+import (
+	"fmt"
+
+	"github.com/elinx/saturn/pkg/epub"
+)
 
 func main() {
-	epub.OpenFile("test/data/TaoTeChing.epub")
+	book := epub.NewEpub("test/data/TaoTeChing.epub")
+	book.OpenFile()
+	defer book.Close()
+	fmt.Println(book.GetChapterByIndex(0))
 }

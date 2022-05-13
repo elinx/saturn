@@ -4,6 +4,12 @@ import (
 	"archive/zip"
 	"encoding/xml"
 	"fmt"
+	"io"
+	"path"
+)
+
+const (
+	ContainerFilename = "META-INF/container.xml" // filename of container.xml
 )
 
 type Container struct {
@@ -51,44 +57,98 @@ type Rootfile struct {
 	} `xml:"guide"`
 }
 
-var container Container
-var rootfile Rootfile
+type Epub struct {
+	Filename     string
+	Container    Container
+	Rootfile     Rootfile
+	SeqFiles     []*zip.File
+	Files        map[string]*zip.File
+	readercloser *zip.ReadCloser
+}
 
-func OpenFile(path string) error {
-	reader, err := zip.OpenReader(path)
+func NewEpub(filename string) *Epub {
+	return &Epub{
+		Filename: filename,
+		Files:    make(map[string]*zip.File),
+	}
+}
+
+func (epub *Epub) OpenFile() error {
+	reader, err := zip.OpenReader(epub.Filename)
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
-	for _, f := range reader.File {
-		if f.Name == "META-INF/container.xml" {
-			if rc, err := f.Open(); err != nil {
-				return err
-			} else {
-				if err := xml.NewDecoder(rc).Decode(&container); err != nil {
-					return err
-				}
-				fmt.Println(container)
-			}
-		}
-	}
-	if len(container.Rootfiles) == 0 {
-		return fmt.Errorf("no rootfile found")
+	epub.readercloser = reader
+	epub.SeqFiles = reader.File
+
+	for i, f := range reader.File {
+		epub.Files[f.Name] = reader.File[i]
 	}
 
-	// only handle one book for now
-	idx := 0
-	for _, f := range reader.File {
-		if f.Name == container.Rootfiles[idx].FullPath {
-			if rc, err := f.Open(); err != nil {
+	if f, found := epub.Files[ContainerFilename]; !found {
+		return fmt.Errorf("%s not found", ContainerFilename)
+	} else {
+		if rc, err := f.Open(); err != nil {
+			return err
+		} else {
+			if err := xml.NewDecoder(rc).Decode(&epub.Container); err != nil {
 				return err
-			} else {
-				if err := xml.NewDecoder(rc).Decode(&rootfile); err != nil {
-					return err
-				}
-				fmt.Printf("%+v", rootfile)
+			}
+			fmt.Println(epub.Container)
+		}
+	}
+	if f, found := epub.Files[epub.Container.Rootfiles[0].FullPath]; !found {
+		return fmt.Errorf("%s not found", epub.Container.Rootfiles[0].FullPath)
+	} else {
+		if rc, err := f.Open(); err != nil {
+			return err
+		} else {
+			if err := xml.NewDecoder(rc).Decode(&epub.Rootfile); err != nil {
+				return err
 			}
 		}
 	}
 	return nil
+}
+
+func (epub *Epub) Close() {
+	epub.readercloser.Close()
+}
+
+func (epub *Epub) GetChapter(id string) (string, error) {
+	if f, found := epub.Files[id]; !found {
+		return "", fmt.Errorf("%s not found", id)
+	} else {
+		if rc, err := f.Open(); err != nil {
+			return "", err
+		} else {
+			if content, err := io.ReadAll(rc); err != nil {
+				return "", err
+			} else {
+				return string(content), nil
+			}
+		}
+	}
+}
+
+func (epub *Epub) getFullPath(id string) string {
+	namespace := epub.Container.Rootfiles[0].FullPath[:len(epub.Container.Rootfiles[0].FullPath)-len(path.Base(epub.Container.Rootfiles[0].FullPath))]
+	return path.Join(namespace, id)
+}
+
+func (epub *Epub) getChapterName(index int) string {
+	ref := epub.Rootfile.Spine.Items[index].IDref
+	for i, v := range epub.Rootfile.Manifest.Items {
+		if v.ID == ref {
+			return epub.getFullPath(epub.Rootfile.Manifest.Items[i].Href)
+		}
+	}
+	return ""
+}
+
+func (epub *Epub) GetChapterByIndex(index int) (string, error) {
+	if index < 0 || index >= len(epub.Rootfile.Spine.Items) {
+		return "", fmt.Errorf("index out of range")
+	}
+	return epub.GetChapter(epub.getChapterName(index))
 }

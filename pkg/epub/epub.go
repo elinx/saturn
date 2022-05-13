@@ -18,7 +18,6 @@ type Container struct {
 }
 
 type Rootfile struct {
-	Package  xml.Name `xml:"package"`
 	Metadata struct {
 		Rights      string `xml:"rights"`
 		ISBN        string `xml:"identifier"`
@@ -30,6 +29,26 @@ type Rootfile struct {
 		Language    string `xml:"language"`
 		Format      string `xml:"format"`
 	} `xml:"metadata"`
+	Manifest struct {
+		Items []struct {
+			ID        string `xml:"id,attr"`
+			Href      string `xml:"href,attr"`
+			MediaType string `xml:"media-type,attr"`
+		} `xml:"item"`
+	} `xml:"manifest"`
+	Spine struct {
+		Items []struct {
+			IDref string `xml:"idref,attr"`
+			Link  string `xml:"linear,attr"`
+		} `xml:"itemref"`
+	} `xml:"spine"`
+	Guide struct {
+		Items []struct {
+			Type  string `xml:"type,attr"`
+			Href  string `xml:"href,attr"`
+			Title string `xml:"title"`
+		} `xml:"reference"`
+	} `xml:"guide"`
 }
 
 var container Container
@@ -67,7 +86,7 @@ func OpenFile(path string) error {
 				if err := xml.NewDecoder(rc).Decode(&rootfile); err != nil {
 					return err
 				}
-				fmt.Println(rootfile)
+				fmt.Printf("%+v", rootfile)
 			}
 		}
 	}

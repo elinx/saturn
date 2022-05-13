@@ -1,0 +1,5 @@
+.vscode
+test/data/TaoTeChing/
+output/
+.DS_Store
+test/data/.DS_Store

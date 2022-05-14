@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/elinx/saturn/pkg/epub"
+	log "github.com/sirupsen/logrus"
 )
 
 type item struct {
@@ -48,8 +49,15 @@ func (m model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := message.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "esc", "ctrl+c":
+		case "q", "ctrl+c":
 			return m, tea.Quit
+		case "enter":
+			if item, ok := m.list.SelectedItem().(item); !ok {
+				return m, tea.Quit
+			} else {
+				log.Printf("item selected: %s", item.Title())
+				return m, tea.Quit
+			}
 		}
 	}
 

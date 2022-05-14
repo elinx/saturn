@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"path"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -133,7 +135,7 @@ func (epub *Epub) Open() error {
 			if err := xml.NewDecoder(rc).Decode(&epub.Container); err != nil {
 				return err
 			}
-			fmt.Println(epub.Container)
+			log.Println(epub.Container)
 		}
 	}
 	if f, found := epub.Files[epub.Container.Rootfiles[0].FullPath]; !found {
@@ -179,7 +181,7 @@ func (epub *Epub) getFullPath(id string) string {
 }
 
 func (epub *Epub) getManifestFilePathById(id string) string {
-	fmt.Printf("id: %s\n", id)
+	log.Printf("id: %s\n", id)
 	for i, v := range epub.Rootfile.Manifest.Items {
 		if v.ID == id {
 			return epub.getFullPath(epub.Rootfile.Manifest.Items[i].Href)

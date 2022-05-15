@@ -9,18 +9,20 @@ import (
 
 type item struct {
 	title string
+	src   string
 }
 
 func (i item) FilterValue() string { return i.title }
 func (i item) Title() string       { return i.title }
 func (i item) Description() string { return "" }
+func (i item) Src() string         { return i.src }
 
 func newItems(book *epub.Epub) []list.Item {
 	content := []list.Item{}
 	for _, v := range book.Toc.NavMap.NavPoints {
-		content = append(content, item{v.NavLable.Text})
+		content = append(content, item{title: v.NavLable.Text, src: v.Content.Src})
 		for _, v := range v.NavPoints {
-			content = append(content, item{"  " + v.NavLable.Text})
+			content = append(content, item{title: "  " + v.NavLable.Text, src: v.Content.Src})
 		}
 	}
 	return content
@@ -55,8 +57,8 @@ func (m model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			if item, ok := m.list.SelectedItem().(item); !ok {
 				return m, tea.Quit
 			} else {
-				log.Printf("item selected: %s", item.Title())
-				return m, tea.Quit
+				log.Printf("item selected: %s", item.Src())
+				return NewTextModel(m.book, item.Src(), m), nil
 			}
 		}
 	}

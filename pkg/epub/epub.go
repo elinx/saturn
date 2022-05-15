@@ -175,7 +175,7 @@ func (epub *Epub) GetContentByFilePath(filepath string) (string, error) {
 	}
 }
 
-func (epub *Epub) getFullPath(id string) string {
+func (epub *Epub) GetFullPath(id string) string {
 	namespace := epub.Container.Rootfiles[0].FullPath[:len(epub.Container.Rootfiles[0].FullPath)-len(path.Base(epub.Container.Rootfiles[0].FullPath))]
 	return path.Join(namespace, id)
 }
@@ -184,7 +184,7 @@ func (epub *Epub) getManifestFilePathById(id string) string {
 	log.Printf("id: %s\n", id)
 	for i, v := range epub.Rootfile.Manifest.Items {
 		if v.ID == id {
-			return epub.getFullPath(epub.Rootfile.Manifest.Items[i].Href)
+			return epub.GetFullPath(epub.Rootfile.Manifest.Items[i].Href)
 		}
 	}
 	return ""

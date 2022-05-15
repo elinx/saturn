@@ -3,6 +3,7 @@ package main
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/elinx/saturn/pkg/epub"
+	"github.com/elinx/saturn/pkg/parser"
 )
 
 type textModel struct {
@@ -40,6 +41,10 @@ func (m textModel) View() string {
 	if content, err := m.book.GetContentByFilePath(m.file); err != nil {
 		return err.Error()
 	} else {
-		return string(content)
+		if str, err := parser.Parse(content, parser.DefaultFormater); err != nil {
+			return err.Error()
+		} else {
+			return str
+		}
 	}
 }

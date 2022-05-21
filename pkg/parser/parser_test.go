@@ -32,6 +32,10 @@ func TestP(t *testing.T) {
 			html:   `<p>The way <i>you</i> can go</p>`,
 			expect: "The way \x1b[3myou\x1b[0m can go",
 		},
+		{
+			html:   `<p/>`,
+			expect: "",
+		},
 	}
 	for _, tc := range testcases {
 		if str, err := Parse(tc.html, htmlFormater{}); err != nil {

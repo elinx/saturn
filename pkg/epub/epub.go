@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -216,4 +217,14 @@ func (epub *Epub) getTableOfContent() error {
 		}
 	}
 	return nil
+}
+
+func (epub *Epub) GetCssFiles() []string {
+	var cssFiles []string
+	for _, item := range epub.Rootfile.Manifest.Items {
+		if strings.HasSuffix(item.Href, ".css") {
+			cssFiles = append(cssFiles, epub.GetFullPath(item.Href))
+		}
+	}
+	return cssFiles
 }

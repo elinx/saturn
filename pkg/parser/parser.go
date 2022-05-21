@@ -20,10 +20,21 @@ func parse(node *html.Node, formater IHtmlFormater) string {
 		case "i":
 			return formater.I(result)
 		case "p":
-			return formater.P(result)
+			return formater.P(result, node.Attr)
 		case "title":
 			return formater.Title(result)
 		}
+	}
+	return result
+}
+
+func getCssFiles(node *html.Node) []string {
+	if node.Type == html.ElementNode && node.Data == "style" {
+		return strings.Split(node.FirstChild.Data, ";")
+	}
+	var result []string
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		result = append(result, getCssFiles(c)...)
 	}
 	return result
 }
@@ -34,5 +45,6 @@ func Parse(content string, formater IHtmlFormater) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	log.Infoln(getCssFiles(htmlNode))
 	return formater.PostProcess(parse(htmlNode, formater)), nil
 }

@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/muesli/termenv"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/html"
 )
 
 var DefaultFormater = htmlFormater{
@@ -13,7 +15,7 @@ var DefaultFormater = htmlFormater{
 type IHtmlFormater interface {
 	Title(string) string
 	I(string) string
-	P(string) string
+	P(string, []html.Attribute) string
 	PostProcess(string) string
 }
 
@@ -31,7 +33,8 @@ func (f htmlFormater) I(c string) string {
 	return termenv.String(c).Italic().String()
 }
 
-func (f htmlFormater) P(c string) string {
+func (f htmlFormater) P(c string, attributes []html.Attribute) string {
+	log.Infof("attributes: %v\n", attributes)
 	return c
 }
 

@@ -4,6 +4,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/elinx/saturn/pkg/epub"
 	"github.com/elinx/saturn/pkg/parser"
+	"github.com/muesli/termenv"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type textModel struct {
@@ -41,7 +44,11 @@ func (m textModel) View() string {
 	if content, err := m.book.GetContentByFilePath(m.file); err != nil {
 		return err.Error()
 	} else {
-		if str, err := parser.Parse(content, parser.DefaultFormater); err != nil {
+		if str, err := parser.Parse(content, parser.HtmlFormater{
+			ColorProfile: termenv.ColorProfile(),
+			Styles:       m.book.Styles,
+		}); err != nil {
+			log.Errorf("parse error: %v", err)
 			return err.Error()
 		} else {
 			return str

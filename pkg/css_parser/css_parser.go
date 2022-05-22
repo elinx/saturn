@@ -48,19 +48,19 @@ func (t TokenType) String() string {
 }
 
 type parser struct {
-	rules  []*rule
+	rules  []*Rule
 	tokens []tokenInfo
 	cur    int
 }
 
-type rule struct {
-	selector     string
-	declarations []declaration
+type Rule struct {
+	Selector     string
+	Declarations []Declaration
 }
 
-type declaration struct {
-	property string
-	value    string
+type Declaration struct {
+	Property string
+	Value    string
 }
 
 type tokenInfo struct {
@@ -187,7 +187,7 @@ func NewParser() *parser {
 	return &parser{}
 }
 
-func (p *parser) Parse(css string) ([]*rule, error) {
+func (p *parser) Parse(css string) ([]*Rule, error) {
 	tokenizer := NewTokenizer(css)
 	tokenizer.lex()
 	p.tokens = tokenizer.GetTokens()
@@ -212,12 +212,12 @@ func (p *parser) peek() TokenType {
 	return EOFToken
 }
 
-func (p *parser) matchRules() (*rule, error) {
-	rule := rule{}
+func (p *parser) matchRules() (*Rule, error) {
+	rule := Rule{}
 	if selector, err := p.matchSelector(); err != nil {
 		return nil, fmt.Errorf("failed to match selector: %v", err)
 	} else {
-		rule.selector = selector
+		rule.Selector = selector
 	}
 	if err := p.matchOpenCurlyBrace(); err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func (p *parser) matchRules() (*rule, error) {
 	if delcarations, err := p.matchDeclarations(); err != nil {
 		return nil, fmt.Errorf("failed to match declarations: %v", err)
 	} else {
-		rule.declarations = delcarations
+		rule.Declarations = delcarations
 	}
 	if err := p.matchCloseCurlyBrace(); err != nil {
 		return nil, err
@@ -233,12 +233,12 @@ func (p *parser) matchRules() (*rule, error) {
 	return &rule, nil
 }
 
-func (p *parser) matchDeclaration() (*declaration, error) {
-	delcaration := declaration{}
+func (p *parser) matchDeclaration() (*Declaration, error) {
+	delcaration := Declaration{}
 	if property, err := p.matchProperty(); err != nil {
 		return nil, err
 	} else {
-		delcaration.property = property
+		delcaration.Property = property
 	}
 	if err := p.matchColon(); err != nil {
 		return nil, err
@@ -246,7 +246,7 @@ func (p *parser) matchDeclaration() (*declaration, error) {
 	if value, err := p.matchValue(); err != nil {
 		return nil, err
 	} else {
-		delcaration.value = value
+		delcaration.Value = value
 	}
 	if err := p.matchSemicolon(); err != nil {
 		return nil, err
@@ -254,8 +254,8 @@ func (p *parser) matchDeclaration() (*declaration, error) {
 	return &delcaration, nil
 }
 
-func (p *parser) matchDeclarations() ([]declaration, error) {
-	var declarations []declaration
+func (p *parser) matchDeclarations() ([]Declaration, error) {
+	var declarations []Declaration
 	for p.cur < len(p.tokens) {
 		if declaration, err := p.matchDeclaration(); err != nil {
 			return declarations, nil

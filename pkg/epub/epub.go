@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	cssparser "github.com/elinx/saturn/pkg/css_parser"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -106,6 +107,7 @@ type Epub struct {
 	SeqFiles     []*zip.File
 	Files        map[string]*zip.File
 	readercloser *zip.ReadCloser
+	Styles       []*cssparser.Rule
 }
 
 func NewEpub(filename string) *Epub {
@@ -151,6 +153,9 @@ func (epub *Epub) Open() error {
 		}
 	}
 	if err := epub.getTableOfContent(); err != nil {
+		return err
+	}
+	if err := epub.parseCssFiles(); err != nil {
 		return err
 	}
 	return nil
@@ -219,7 +224,7 @@ func (epub *Epub) getTableOfContent() error {
 	return nil
 }
 
-func (epub *Epub) GetCssFiles() []string {
+func (epub *Epub) getCssFiles() []string {
 	var cssFiles []string
 	for _, item := range epub.Rootfile.Manifest.Items {
 		if strings.HasSuffix(item.Href, ".css") {
@@ -227,4 +232,17 @@ func (epub *Epub) GetCssFiles() []string {
 		}
 	}
 	return cssFiles
+}
+
+func (epub *Epub) parseCssFiles() error {
+	for _, filename := range epub.getCssFiles() {
+		if content, err := epub.GetContentByFilePath(filename); err == nil {
+			if rules, err := cssparser.NewParser().Parse(content); err != nil {
+				return err
+			} else {
+				epub.Styles = append(epub.Styles, rules...)
+			}
+		}
+	}
+	return nil
 }

@@ -54,7 +54,7 @@ type parser struct {
 }
 
 type Rule struct {
-	Selector     string
+	Selector     []string
 	Declarations []Declaration
 }
 
@@ -309,8 +309,29 @@ func (p *parser) matchValue() (value string, err error) {
 	return value, nil
 }
 
-func (p *parser) matchSelector() (string, error) {
-	return p.matchIdentifier()
+func (p *parser) matchSelector() ([]string, error) {
+	var selectors []string
+	if iden, err := p.matchIdentifier(); err != nil {
+		return nil, fmt.Errorf("failed to match identifier: %v", err)
+	} else {
+		selectors = append(selectors, iden)
+	}
+	for p.peek() == CommaToken {
+		p.advance()
+		if iden, err := p.matchIdentifier(); err != nil {
+			break
+		} else {
+			selectors = append(selectors, iden)
+		}
+	}
+	for p.peek() == IdentifierToken {
+		if iden, err := p.matchIdentifier(); err != nil {
+			return nil, fmt.Errorf("failed to match identifier: %v", err)
+		} else {
+			selectors = append(selectors, iden)
+		}
+	}
+	return selectors, nil
 }
 
 func (p *parser) matchIdentifier() (string, error) {

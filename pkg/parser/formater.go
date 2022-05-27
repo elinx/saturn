@@ -43,15 +43,17 @@ func (f HtmlFormater) P(c string, attributes []html.Attribute) string {
 		if attr.Key == "class" {
 			selector := "." + attr.Val
 			for _, rule := range f.Styles {
-				if rule.Selector == selector {
-					log.Println("hit selector: ", selector)
-					for _, prop := range rule.Declarations {
-						if prop.Property == "color" {
-							style.Foreground(lipgloss.Color(prop.Value))
-						} else if prop.Property == "background-color" {
-							style.Background(lipgloss.Color(prop.Value))
-						} else if prop.Property == "border-top" {
-							style.BorderTop(true)
+				for _, s := range rule.Selector {
+					if s == selector {
+						log.Println("hit selector: ", selector)
+						for _, prop := range rule.Declarations {
+							if prop.Property == "color" {
+								style.Foreground(lipgloss.Color(prop.Value))
+							} else if prop.Property == "background-color" {
+								style.Background(lipgloss.Color(prop.Value))
+							} else if prop.Property == "border-top" {
+								style.BorderTop(true)
+							}
 						}
 					}
 				}

@@ -56,6 +56,20 @@ func TestCssTokens(t *testing.T) {
 				{CloseCurlyBraceToken, "}", 39, 1},
 			},
 		},
+		{
+			css: `p,q { color: red; }`,
+			expect: []tokenInfo{
+				{IdentifierToken, "p", 0, 1},
+				{CommaToken, ",", 1, 1},
+				{IdentifierToken, "q", 2, 1},
+				{OpenCurlyBraceToken, "{", 4, 1},
+				{IdentifierToken, "color", 6, 5},
+				{ColonToken, ":", 11, 1},
+				{IdentifierToken, "red", 13, 3},
+				{SemicolonToken, ";", 16, 1},
+				{CloseCurlyBraceToken, "}", 18, 1},
+			},
+		},
 	}
 	for _, tc := range testcases {
 		tokenizer := NewTokenizer(tc.css)
@@ -76,7 +90,49 @@ func TestRules(t *testing.T) {
 			css: `p { color: red; }`,
 			expect: []*Rule{
 				{
-					Selector: "p",
+					Selector: []string{"p"},
+					Declarations: []Declaration{
+						{
+							Property: "color",
+							Value:    "red",
+						},
+					},
+				},
+			},
+		},
+		{
+			css: `.p { color: red; }`,
+			expect: []*Rule{
+				{
+					Selector: []string{".p"},
+					Declarations: []Declaration{
+						{
+							Property: "color",
+							Value:    "red",
+						},
+					},
+				},
+			},
+		},
+		{
+			css: `.p.q { color: red; }`,
+			expect: []*Rule{
+				{
+					Selector: []string{".p.q"},
+					Declarations: []Declaration{
+						{
+							Property: "color",
+							Value:    "red",
+						},
+					},
+				},
+			},
+		},
+		{
+			css: `.p .q { color: red; }`,
+			expect: []*Rule{
+				{
+					Selector: []string{".p", ".q"},
 					Declarations: []Declaration{
 						{
 							Property: "color",
@@ -90,11 +146,25 @@ func TestRules(t *testing.T) {
 			css: `p { border-top: 1px solid black; }`,
 			expect: []*Rule{
 				{
-					Selector: "p",
+					Selector: []string{"p"},
 					Declarations: []Declaration{
 						{
 							Property: "border-top",
 							Value:    "1px solid black",
+						},
+					},
+				},
+			},
+		},
+		{
+			css: `p,q { color: red; }`,
+			expect: []*Rule{
+				{
+					Selector: []string{"p", "q"},
+					Declarations: []Declaration{
+						{
+							Property: "color",
+							Value:    "red",
 						},
 					},
 				},
@@ -105,7 +175,7 @@ func TestRules(t *testing.T) {
 		parser := NewParser()
 		rules, err := parser.Parse(tc.css)
 		if err != nil {
-			t.Errorf("failed to parse css: %v", err)
+			t.Errorf("failed to parse css %v: %v", tc.css, err)
 		}
 		if !reflect.DeepEqual(rules, tc.expect) {
 			t.Errorf("got: %v, expect: %v", rules, tc.expect)

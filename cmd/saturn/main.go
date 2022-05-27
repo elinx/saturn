@@ -12,7 +12,9 @@ import (
 func main() {
 	log.Println("start app...")
 	book := epub.NewEpub(os.Args[1])
-	book.Open()
+	if err := book.Open(); err != nil {
+		log.Fatal(err)
+	}
 	defer book.Close()
 
 	program := tea.NewProgram(NewModel(book), tea.WithAltScreen())

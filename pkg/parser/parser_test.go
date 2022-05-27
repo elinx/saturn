@@ -38,7 +38,7 @@ func TestP(t *testing.T) {
 		},
 	}
 	for _, tc := range testcases {
-		if str, err := Parse(tc.html, htmlFormater{}); err != nil {
+		if str, err := Parse(tc.html, HtmlFormater{}); err != nil {
 			t.Error(err)
 		} else if str != tc.expect {
 			t.Errorf("got: %s, expect: %s", str, tc.expect)

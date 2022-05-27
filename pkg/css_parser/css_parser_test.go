@@ -70,17 +70,17 @@ func TestCssTokens(t *testing.T) {
 func TestRules(t *testing.T) {
 	testcases := []struct {
 		css    string
-		expect []*rule
+		expect []*Rule
 	}{
 		{
 			css: `p { color: red; }`,
-			expect: []*rule{
+			expect: []*Rule{
 				{
-					selector: "p",
-					declarations: []declaration{
+					Selector: "p",
+					Declarations: []Declaration{
 						{
-							property: "color",
-							value:    "red",
+							Property: "color",
+							Value:    "red",
 						},
 					},
 				},
@@ -88,13 +88,13 @@ func TestRules(t *testing.T) {
 		},
 		{
 			css: `p { border-top: 1px solid black; }`,
-			expect: []*rule{
+			expect: []*Rule{
 				{
-					selector: "p",
-					declarations: []declaration{
+					Selector: "p",
+					Declarations: []Declaration{
 						{
-							property: "border-top",
-							value:    "1px solid black",
+							Property: "border-top",
+							Value:    "1px solid black",
 						},
 					},
 				},

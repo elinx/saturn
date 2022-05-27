@@ -96,13 +96,20 @@ func (t *tokenizer) advance() {
 	t.cur++
 }
 
-func (t *tokenizer) next() rune {
+func (t *tokenizer) curr() rune {
 	return rune(t.source[t.cur])
+}
+
+func (t *tokenizer) next() rune {
+	if t.cur+1 >= len(t.source) {
+		return rune(0)
+	}
+	return rune(t.source[t.cur+1])
 }
 
 func (t *tokenizer) lex() {
 	for t.cur < len(t.source) {
-		c := t.next()
+		c := t.curr()
 		switch {
 		case c == '{':
 			t.lexOpenCurlyBrace()
@@ -120,8 +127,25 @@ func (t *tokenizer) lex() {
 			t.lexComma()
 		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
 			t.lexWhitespace()
+		case c == '/':
+			t.lexComment()
 		default:
 			t.lexIdentifier()
+		}
+	}
+}
+
+func (t *tokenizer) lexComment() {
+	if t.next() == '*' {
+		t.advance()
+		t.advance()
+		for t.cur < len(t.source) {
+			if t.curr() == '*' && t.next() == '/' {
+				t.advance()
+				t.advance()
+				break
+			}
+			t.advance()
 		}
 	}
 }
@@ -169,11 +193,11 @@ func (t *tokenizer) lexWhitespace() {
 func (t *tokenizer) lexIdentifier() {
 	var ident string
 	for t.cur < len(t.source) {
-		c := t.next()
+		c := t.curr()
 		if c >= 'a' && c <= 'z' ||
 			c >= 'A' && c <= 'Z' ||
 			c >= '0' && c <= '9' ||
-			c == '-' || c == '_' || c == '.' || c == '%' {
+			c == '-' || c == '_' || c == '.' || c == '%' || c == '#' {
 			t.advance()
 			ident += string(c)
 		} else {

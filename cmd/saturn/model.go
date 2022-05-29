@@ -39,8 +39,10 @@ func NewModel(book *epub.Epub) tea.Model {
 }
 
 type model struct {
-	book *epub.Epub
-	list list.Model
+	book   *epub.Epub
+	list   list.Model
+	width  int
+	height int
 }
 
 func (m model) Init() tea.Cmd {
@@ -58,9 +60,13 @@ func (m model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			} else {
 				log.Printf("item selected: %s", item.Src())
-				return NewTextModel(m.book, item.Src(), m), nil
+				return NewTextModel(m.book, item.Src(), m, m.width, m.height), nil
 			}
 		}
+	case tea.WindowSizeMsg:
+		log.Println("window size changed: ", msg.Width, msg.Height)
+		m.width = msg.Width
+		m.height = msg.Height
 	}
 
 	var cmd tea.Cmd

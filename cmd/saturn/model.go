@@ -59,13 +59,13 @@ func (m model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			if item, ok := m.list.SelectedItem().(item); !ok {
 				return m, tea.Quit
 			} else {
-				log.Printf("item selected: %s", item.Src())
+				log.Debugf("item selected: %s", item.Src())
 				model := NewTextModel(m.book, item.Src(), m, m.width, m.height)
 				return model, model.Init()
 			}
 		}
 	case tea.WindowSizeMsg:
-		log.Println("window size changed: ", msg.Width, msg.Height)
+		log.Debugf("window size changed: ", msg.Width, msg.Height)
 		m.width = msg.Width
 		m.height = msg.Height
 	}

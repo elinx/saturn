@@ -61,6 +61,10 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			m.continueNextPage()
 		case tea.MouseWheelUp:
 			m.continuePrevPage()
+		case tea.MouseLeft:
+			log.Infof("mouse left clicked: (%v, %v)", msg.X, msg.Y)
+		case tea.MouseRelease:
+			log.Infof("mouse release: (%v, %v)", msg.X, msg.Y)
 		}
 	}
 	var cmd tea.Cmd
@@ -90,8 +94,8 @@ func (m *textModel) continueNextPage() {
 			log.Info("get next section error: %v", err)
 		} else {
 			content = m.renderContent(content)
-			m.content += "\n" + content
-			m.viewport.SetContent(content)
+			m.content += content
+			m.viewport.SetContent(m.content)
 			m.currSectionId = nextId
 		}
 	}
@@ -103,8 +107,8 @@ func (m *textModel) continuePrevPage() {
 			log.Info("get prev section error: %v", err)
 		} else {
 			content = m.renderContent(content)
-			m.content = content + "\n" + m.content
-			m.viewport.SetContent(content)
+			m.content = content + m.content
+			m.viewport.SetContent(m.content)
 			m.currSectionId = prevId
 		}
 	}

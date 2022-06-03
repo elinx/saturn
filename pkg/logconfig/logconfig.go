@@ -43,6 +43,7 @@ func init() {
 		log.Fatalf("error opening file: %v", err)
 	}
 	log.SetOutput(logFile)
+	log.SetLevel(log.DebugLevel)
 	log.SetReportCaller(true)
 	log.SetFormatter(&simpleFormatter{
 		log.TextFormatter{

@@ -23,6 +23,8 @@ func parse(node *html.Node, formater IHtmlFormater) string {
 			return formater.P(result, node.Attr)
 		case "title":
 			return formater.Title(result)
+		case "h1", "h2", "h3", "h4", "h5", "h6":
+			return formater.Header(result)
 		}
 	}
 	return result

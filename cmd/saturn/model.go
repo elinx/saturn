@@ -9,13 +9,13 @@ import (
 
 type item struct {
 	title string
-	src   string
+	src   epub.HRef
 }
 
 func (i item) FilterValue() string { return i.title }
 func (i item) Title() string       { return i.title }
 func (i item) Description() string { return "" }
-func (i item) Src() string         { return i.src }
+func (i item) Src() epub.HRef      { return i.src }
 
 func newItems(book *epub.Epub) []list.Item {
 	content := []list.Item{}
@@ -60,7 +60,8 @@ func (m model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			} else {
 				log.Printf("item selected: %s", item.Src())
-				return NewTextModel(m.book, item.Src(), m, m.width, m.height), nil
+				model := NewTextModel(m.book, item.Src(), m, m.width, m.height)
+				return model, model.Init()
 			}
 		}
 	case tea.WindowSizeMsg:

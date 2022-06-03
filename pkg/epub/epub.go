@@ -16,6 +16,10 @@ const (
 	ContainerFilename = "META-INF/container.xml" // filename of container.xml
 )
 
+// This the manifest item id of the epub content
+type ManifestId string
+type HRef string
+
 type Container struct {
 	Container xml.Name `xml:"container"`
 	XMLNS     string   `xml:"xmlns,attr"`
@@ -41,16 +45,16 @@ type Rootfile struct {
 	} `xml:"metadata"`
 	Manifest struct {
 		Items []struct {
-			ID        string `xml:"id,attr"`
-			Href      string `xml:"href,attr"`
-			MediaType string `xml:"media-type,attr"`
+			ID        ManifestId `xml:"id,attr"`
+			Href      HRef       `xml:"href,attr"`
+			MediaType string     `xml:"media-type,attr"`
 		} `xml:"item"`
 	} `xml:"manifest"`
 	Spine struct {
-		TocID string `xml:"toc,attr"`
+		TocID ManifestId `xml:"toc,attr"`
 		Items []struct {
-			IDref string `xml:"idref,attr"`
-			Link  string `xml:"linear,attr"`
+			IDref ManifestId `xml:"idref,attr"`
+			Link  string     `xml:"linear,attr"`
 		} `xml:"itemref"`
 	} `xml:"spine"`
 	Guide struct {
@@ -69,7 +73,7 @@ type navPoint struct {
 		Text string `xml:",chardata"`
 	} `xml:"navLabel>text"`
 	Content struct {
-		Src string `xml:"src,attr"`
+		Src HRef `xml:"src,attr"`
 	} `xml:"content"`
 }
 
@@ -92,7 +96,7 @@ type Toc struct {
 				Text string `xml:",chardata"`
 			} `xml:"navLabel>text"`
 			Content struct {
-				Src string `xml:"src,attr"`
+				Src HRef `xml:"src,attr"`
 			} `xml:"content"`
 			NavPoints []navPoint `xml:"navPoint"`
 		} `xml:"navPoint"`
@@ -152,7 +156,7 @@ func (epub *Epub) Open() error {
 			}
 		}
 	}
-	if err := epub.getTableOfContent(); err != nil {
+	if err := epub.parseTableOfContent(); err != nil {
 		return err
 	}
 	if err := epub.parseCssFiles(); err != nil {
@@ -165,7 +169,8 @@ func (epub *Epub) Close() {
 	epub.readercloser.Close()
 }
 
-func (epub *Epub) GetContentByFilePath(filepath string) (string, error) {
+// getContentByFilePath return file content by full filepath(relative to rootfile)
+func (epub *Epub) getContentByFilePath(filepath string) (string, error) {
 	if f, found := epub.Files[filepath]; !found {
 		return "", fmt.Errorf("%s not found", filepath)
 	} else {
@@ -181,12 +186,26 @@ func (epub *Epub) GetContentByFilePath(filepath string) (string, error) {
 	}
 }
 
-func (epub *Epub) GetFullPath(id string) string {
-	namespace := epub.Container.Rootfiles[0].FullPath[:len(epub.Container.Rootfiles[0].FullPath)-len(path.Base(epub.Container.Rootfiles[0].FullPath))]
-	return path.Join(namespace, id)
+// GetContentByHref return file content by href(setted in spine)
+func (epub *Epub) GetContentByHref(href HRef) (string, error) {
+	filepath := epub.GetFullPath(href)
+	return epub.getContentByFilePath(filepath)
 }
 
-func (epub *Epub) getManifestFilePathById(id string) string {
+// GetContentByManifestId return file content by manifest id
+func (epub *Epub) GetContentByManifestId(id ManifestId) (string, error) {
+	filepath := epub.getManifestFilePathById(id)
+	log.Infof("filepath: %s", filepath)
+	return epub.getContentByFilePath(filepath)
+}
+
+// GetFullPath return full filepath(relative to rootfile) by href(setted in spine)
+func (epub *Epub) GetFullPath(href HRef) string {
+	namespace := epub.Container.Rootfiles[0].FullPath[:len(epub.Container.Rootfiles[0].FullPath)-len(path.Base(epub.Container.Rootfiles[0].FullPath))]
+	return path.Join(namespace, string(href))
+}
+
+func (epub *Epub) getManifestFilePathById(id ManifestId) string {
 	log.Printf("id: %s\n", id)
 	for i, v := range epub.Rootfile.Manifest.Items {
 		if v.ID == id {
@@ -196,19 +215,69 @@ func (epub *Epub) getManifestFilePathById(id string) string {
 	return ""
 }
 
-func (epub *Epub) getChapterNameByIndex(index int) string {
-	ref := epub.Rootfile.Spine.Items[index].IDref
-	return epub.getManifestFilePathById(ref)
-}
-
-func (epub *Epub) GetChapterByIndex(index int) (string, error) {
-	if index < 0 || index >= len(epub.Rootfile.Spine.Items) {
-		return "", fmt.Errorf("index out of range")
+func (epub *Epub) HrefToManifestId(href HRef) ManifestId {
+	for _, v := range epub.Rootfile.Manifest.Items {
+		if v.Href == href {
+			return v.ID
+		}
 	}
-	return epub.GetContentByFilePath(epub.getChapterNameByIndex(index))
+	return ""
 }
 
-func (epub *Epub) getTableOfContent() error {
+func (epub *Epub) GetNextSection(id ManifestId) (string, ManifestId, error) {
+	for i, v := range epub.Rootfile.Spine.Items {
+		if v.IDref == id {
+			if i+1 < len(epub.Rootfile.Spine.Items) {
+				nextId := epub.Rootfile.Spine.Items[i+1].IDref
+				content, err := epub.getContentByFilePath(epub.getManifestFilePathById(epub.Rootfile.Spine.Items[i+1].IDref))
+				return content, nextId, err
+			}
+			return "", "", fmt.Errorf("end of epub")
+		}
+	}
+	return "", "", fmt.Errorf("id not found")
+}
+
+func (epub *Epub) GetPrevSection(id ManifestId) (string, ManifestId, error) {
+	for i, v := range epub.Rootfile.Spine.Items {
+		if v.IDref == id {
+			if i-1 >= 0 {
+				prevId := epub.Rootfile.Spine.Items[i-1].IDref
+				content, err := epub.getContentByFilePath(epub.getManifestFilePathById(epub.Rootfile.Spine.Items[i-1].IDref))
+				return content, prevId, err
+			}
+			return "", "", fmt.Errorf("start of epub")
+		}
+	}
+	return "", "", fmt.Errorf("id not found")
+}
+
+// func (epub *Epub) GetChapterIndex(id ManifestId) int {
+// 	for i, v := range epub.Toc.NavMap.NavPoints {
+// 		if v.IDref == id {
+// 			return i
+// 		}
+// 	}
+// 	return -1
+// }
+
+// func (epub *Epub) GetNextChapter(id ManifestId) (string, error) {
+// 	index := epub.GetChapterIndex(id)
+// 	if index == -1 {
+// 		return "", fmt.Errorf("chapter not found")
+// 	}
+// 	return epub.GetChapterByIndex(index + 1)
+// }
+
+// func (epub *Epub) GetPrevChapter(id ManifestId) (string, error) {
+// 	index := epub.GetChapterIndex(id)
+// 	if index == -1 {
+// 		return "", fmt.Errorf("chapter not found")
+// 	}
+// 	return epub.GetChapterByIndex(index - 1)
+// }
+
+func (epub *Epub) parseTableOfContent() error {
 	filepath := epub.getManifestFilePathById(epub.Rootfile.Spine.TocID)
 	if f, found := epub.Files[filepath]; !found {
 		return fmt.Errorf("%s not found", filepath)
@@ -227,7 +296,7 @@ func (epub *Epub) getTableOfContent() error {
 func (epub *Epub) getCssFiles() []string {
 	var cssFiles []string
 	for _, item := range epub.Rootfile.Manifest.Items {
-		if strings.HasSuffix(item.Href, ".css") {
+		if strings.HasSuffix(string(item.Href), ".css") {
 			cssFiles = append(cssFiles, epub.GetFullPath(item.Href))
 		}
 	}
@@ -236,7 +305,7 @@ func (epub *Epub) getCssFiles() []string {
 
 func (epub *Epub) parseCssFiles() error {
 	for _, filename := range epub.getCssFiles() {
-		if content, err := epub.GetContentByFilePath(filename); err == nil {
+		if content, err := epub.getContentByFilePath(filename); err == nil {
 			if rules, err := cssparser.NewParser().Parse(content); err != nil {
 				return err
 			} else {

@@ -18,6 +18,7 @@ type IHtmlFormater interface {
 	Title(string) string
 	I(string) string
 	P(string, []html.Attribute) string
+	Header(string) string
 	PostProcess(string) string
 }
 
@@ -63,6 +64,12 @@ func (f HtmlFormater) P(c string, attributes []html.Attribute) string {
 	rc := style.Render(c)
 	log.Println("return:", rc)
 	return rc
+}
+
+func (f HtmlFormater) Header(c string) string {
+	return termenv.String(c).Bold().
+		Foreground(f.ColorProfile.Color("#ffffff")).
+		Background(f.ColorProfile.Color("#0000ff")).String()
 }
 
 func (f HtmlFormater) PostProcess(c string) string {

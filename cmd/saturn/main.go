@@ -17,7 +17,8 @@ func main() {
 	}
 	defer book.Close()
 
-	program := tea.NewProgram(NewModel(book), tea.WithAltScreen())
+	program := tea.NewProgram(NewModel(book),
+		tea.WithAltScreen(), tea.WithMouseAllMotion())
 	if err := program.Start(); err != nil {
 		panic(err)
 	}

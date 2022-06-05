@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/elinx/saturn/pkg/epub"
 	"github.com/elinx/saturn/pkg/parser"
 	"github.com/muesli/reflow/wrap"
@@ -18,16 +19,27 @@ type textModel struct {
 	width         int
 	height        int
 	currSectionId epub.ManifestId
+
+	selectionStart pos
+	selectionEnd   pos
 }
+
+type pos struct {
+	x, y int
+}
+
+var invalidPos pos = pos{-1, -1}
 
 func NewTextModel(book *epub.Epub, href epub.HRef, prev tea.Model, width, height int) tea.Model {
 	return &textModel{
-		book:          book,
-		prevModel:     prev,
-		viewport:      viewport.New(width, height),
-		width:         width,
-		height:        height,
-		currSectionId: book.HrefToManifestId(href),
+		book:           book,
+		prevModel:      prev,
+		viewport:       viewport.New(width, height),
+		width:          width,
+		height:         height,
+		currSectionId:  book.HrefToManifestId(href),
+		selectionStart: invalidPos,
+		selectionEnd:   invalidPos,
 	}
 }
 
@@ -38,6 +50,12 @@ func (m *textModel) Init() tea.Cmd {
 		return tea.Quit
 	}
 	content = m.renderContent(content)
+	m.viewport.Style = lipgloss.NewStyle()
+	// Bold(true).
+	// Foreground(lipgloss.Color("#FAFAFA")).
+	// Background(lipgloss.Color("#7D56F4")).
+	// PaddingTop(2).
+	// PaddingLeft(2)
 	m.viewport.SetContent(content)
 	return nil
 }
@@ -62,9 +80,15 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.MouseWheelUp:
 			m.continuePrevPage()
 		case tea.MouseLeft:
-			log.Infof("mouse left clicked: (%v, %v)", msg.X, msg.Y)
+			log.Debugf("mouse left clicked: (%v, %v)", msg.X, msg.Y)
+			if m.selectionStart == invalidPos {
+				m.selectionStart = pos{msg.X, msg.Y}
+			}
 		case tea.MouseRelease:
-			log.Infof("mouse release: (%v, %v)", msg.X, msg.Y)
+			log.Debugf("mouse release: (%v, %v)", msg.X, msg.Y)
+			m.selectionEnd = pos{msg.X, msg.Y}
+			m.markSelection()
+			m.selectionStart = invalidPos
 		}
 	}
 	var cmd tea.Cmd
@@ -112,4 +136,16 @@ func (m *textModel) continuePrevPage() {
 			m.currSectionId = prevId
 		}
 	}
+}
+
+func (m *textModel) markSelection() {
+	// if m.selectionStart == invalidPos || m.selectionEnd == invalidPos {
+	// 	return
+	// }
+	// if m.selectionStart.y == m.selectionEnd.y {
+	// 	m.viewport.Mark(m.selectionStart.y, m.selectionStart.x, m.selectionEnd.x)
+	// } else {
+	// 	m.viewport.Mark(m.selectionStart.y, m.selectionStart.x, -1)
+	// 	m.viewport.Mark(m.selectionEnd.y, 0, m.selectionEnd.x)
+	// }
 }

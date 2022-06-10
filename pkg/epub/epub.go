@@ -224,6 +224,34 @@ func (epub *Epub) HrefToManifestId(href HRef) ManifestId {
 	return ""
 }
 
+func (epub *Epub) ManifestIdToHref(id ManifestId) HRef {
+	for _, v := range epub.Rootfile.Manifest.Items {
+		if v.ID == id {
+			return v.Href
+		}
+	}
+	return ""
+}
+
+type SpineContent struct {
+	Orders   []ManifestId
+	Contents map[ManifestId]string
+}
+
+// GetSpinContent return all spine content in `href: html content` format
+func (epub *Epub) GetSpinContent() (*SpineContent, error) {
+	content := &SpineContent{}
+	for _, v := range epub.Rootfile.Spine.Items {
+		if c, err := epub.GetContentByManifestId(v.IDref); err != nil {
+			return nil, err
+		} else {
+			content.Orders = append(content.Orders, v.IDref)
+			content.Contents[v.IDref] = c
+		}
+	}
+	return content, nil
+}
+
 func (epub *Epub) GetNextSection(id ManifestId) (string, ManifestId, error) {
 	for i, v := range epub.Rootfile.Spine.Items {
 		if v.IDref == id {
@@ -291,6 +319,33 @@ func (epub *Epub) parseTableOfContent() error {
 		}
 	}
 	return nil
+}
+
+type TableOfContent struct {
+	Orders  []string // Titles in order
+	Content map[string]struct {
+		Level int
+		ID    ManifestId
+	}
+}
+
+func (epub *Epub) GetTableOfContent() *TableOfContent {
+	content := &TableOfContent{}
+	for _, v := range epub.Toc.NavMap.NavPoints {
+		content.Orders = append(content.Orders, v.NavLable.Text)
+		content.Content[v.NavLable.Text] = struct {
+			Level int
+			ID    ManifestId
+		}{0, epub.HrefToManifestId(v.Content.Src)}
+		for _, v := range v.NavPoints {
+			content.Orders = append(content.Orders, v.NavLable.Text)
+			content.Content[v.NavLable.Text] = struct {
+				Level int
+				ID    ManifestId
+			}{1, epub.HrefToManifestId(v.Content.Src)}
+		}
+	}
+	return content
 }
 
 func (epub *Epub) getCssFiles() []string {

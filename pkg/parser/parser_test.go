@@ -4,50 +4,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elinx/saturn/pkg/epub"
 	_ "github.com/elinx/saturn/pkg/logconfig"
 )
 
-func TestP(t *testing.T) {
-	testcases := []struct {
-		html   string
-		expect string
-	}{
-		{
-			html:   `<p>The way you can go</p>`,
-			expect: "The way you can go",
-		},
-		{
-			html:   `<p>The way you can go</p><p>The way you can go</p>`,
-			expect: "The way you can goThe way you can go",
-		},
-		{
-			html: `<p>The way you can go</p>
-<p>The way you can go</p>`,
-			expect: "The way you can go\nThe way you can go",
-		},
-		{
-			html:   `<i>The way you can go</i>`,
-			expect: "\x1b[3mThe way you can go\x1b[0m",
-		},
-		{
-			html:   `<p>The way <i>you</i> can go</p>`,
-			expect: "The way \x1b[3myou\x1b[0m can go",
-		},
-		{
-			html:   `<p/>`,
-			expect: "",
-		},
-	}
-	for _, tc := range testcases {
-		if str, err := Parse(tc.html, HtmlFormater{}); err != nil {
-			t.Error(err)
-		} else if str != tc.expect {
-			t.Errorf("got: %s, expect: %s", str, tc.expect)
-		}
-	}
-}
-
-func TestRenderParse(t *testing.T) {
+func TestParse(t *testing.T) {
 	testcases := []struct {
 		name   string
 		html   string
@@ -66,6 +27,7 @@ func TestRenderParse(t *testing.T) {
 						Style: "p",
 					},
 				},
+				BlockPos: map[epub.ManifestId]int{},
 			},
 		},
 		{
@@ -79,6 +41,7 @@ func TestRenderParse(t *testing.T) {
 						Style:    "p",
 					},
 				},
+				BlockPos: map[epub.ManifestId]int{},
 			},
 		},
 		{
@@ -101,6 +64,7 @@ func TestRenderParse(t *testing.T) {
 						Style: "p",
 					},
 				},
+				BlockPos: map[epub.ManifestId]int{},
 			},
 		},
 		{
@@ -125,6 +89,7 @@ func TestRenderParse(t *testing.T) {
 						Style: "p",
 					},
 				},
+				BlockPos: map[epub.ManifestId]int{},
 			},
 		},
 		{
@@ -140,6 +105,7 @@ func TestRenderParse(t *testing.T) {
 						Style: "i",
 					},
 				},
+				BlockPos: map[epub.ManifestId]int{},
 			},
 		},
 		{
@@ -157,6 +123,7 @@ func TestRenderParse(t *testing.T) {
 						Style: "p",
 					},
 				},
+				BlockPos: map[epub.ManifestId]int{},
 			},
 		},
 		{
@@ -186,18 +153,46 @@ func TestRenderParse(t *testing.T) {
 						Style: "p",
 					},
 				},
+				BlockPos: map[epub.ManifestId]int{},
 			},
 		},
 	}
 	for _, tc := range testcases {
 		render := New(nil)
-		if err := render.Parse(tc.html); err != nil {
+		if err := render.parse1(tc.html); err != nil {
 			t.Error(err)
 		} else if !reflect.DeepEqual(tc.expect, render.buffer) {
 			t.Errorf("case %s failed: got(%d lines): \n%v\n, expect(%d lines): \n%v\n",
 				tc.name,
 				len(render.buffer.Lines), render.buffer,
 				len(tc.expect.Lines), tc.expect)
+		}
+	}
+
+}
+
+func TestRenderWrap(t *testing.T) {
+	testcases := []struct {
+		name   string
+		line   string
+		width  int
+		expect string
+	}{
+		{
+			name:   "simple",
+			line:   "The way you can go",
+			width:  7,
+			expect: "The way\nyou can\ngo",
+		},
+	}
+	for _, tc := range testcases {
+		render := New(nil)
+		wraped, linesNum := render.renderWrap(tc.line, tc.width)
+		if wraped != tc.expect {
+			t.Errorf("case %s failed: got: %s, expect: %s", tc.name, wraped, tc.expect)
+		}
+		if linesNum != 3 {
+			t.Errorf("case %s failed: got: %d, expect: %d", tc.name, linesNum, 1)
 		}
 	}
 

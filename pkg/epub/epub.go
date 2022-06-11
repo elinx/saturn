@@ -240,7 +240,10 @@ type SpineContent struct {
 
 // GetSpinContent return all spine content in `href: html content` format
 func (epub *Epub) GetSpinContent() (*SpineContent, error) {
-	content := &SpineContent{}
+	content := &SpineContent{
+		Orders:   make([]ManifestId, 0),
+		Contents: make(map[ManifestId]string),
+	}
 	for _, v := range epub.Rootfile.Spine.Items {
 		if c, err := epub.GetContentByManifestId(v.IDref); err != nil {
 			return nil, err
@@ -330,7 +333,13 @@ type TableOfContent struct {
 }
 
 func (epub *Epub) GetTableOfContent() *TableOfContent {
-	content := &TableOfContent{}
+	content := &TableOfContent{
+		Orders: make([]string, 0),
+		Content: make(map[string]struct {
+			Level int
+			ID    ManifestId
+		}),
+	}
 	for _, v := range epub.Toc.NavMap.NavPoints {
 		content.Orders = append(content.Orders, v.NavLable.Text)
 		content.Content[v.NavLable.Text] = struct {

@@ -4,41 +4,10 @@ import (
 	"strings"
 
 	"github.com/elinx/saturn/pkg/epub"
+	"github.com/muesli/reflow/wrap"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 )
-
-func parse(n *html.Node, formater IHtmlFormater) string {
-	if n.Type == html.TextNode {
-		return n.Data
-	}
-	var result string
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		result += parse(c, formater)
-	}
-	if n.Type == html.ElementNode {
-		switch n.Data {
-		case "i":
-			return formater.I(result)
-		case "p":
-			return formater.P(result, n.Attr)
-		case "title":
-			return formater.Title(result)
-		case "h1", "h2", "h3", "h4", "h5", "h6":
-			return formater.Header(result)
-		}
-	}
-	return result
-}
-
-func Parse(content string, formater IHtmlFormater) (string, error) {
-	log.Infoln("Enter into parsing of HTML")
-	htmlNode, err := html.Parse(strings.NewReader(content))
-	if err != nil {
-		return "", err
-	}
-	return formater.PostProcess(parse(htmlNode, formater)), nil
-}
 
 type Segment struct {
 	Content string
@@ -52,42 +21,79 @@ type Line struct {
 }
 type Buffer struct {
 	Lines []Line
+
+	// The position of each block of the spine in the Lines
+	BlockPos map[epub.ManifestId]int
 }
 
 type Renderer struct {
-	book   *epub.Epub
-	buffer *Buffer
+	book    *epub.Epub
+	buffer  *Buffer
+	offsets []int
 }
 
 func New(book *epub.Epub) *Renderer {
-	return &Renderer{book: book, buffer: &Buffer{}}
+	return &Renderer{book: book, buffer: &Buffer{
+		Lines:    []Line{},
+		BlockPos: make(map[epub.ManifestId]int),
+	}}
 }
 
-func (r *Renderer) Render() error {
+func (r *Renderer) Render(width int) string {
+	var lines []string
+	lineNumAccum := 0
+	for _, line := range r.buffer.Lines {
+		lineWraped := wrap.String(line.Content, width)
+		r.offsets = append(r.offsets, lineNumAccum)
+		lineNum := strings.Count(lineWraped, "\n") + 1
+		lineNumAccum += lineNum
+		lines = append(lines, lineWraped)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// renderWrap wraps the content of the line with the given width
+func (r *Renderer) renderWrap(line string, width int) (string, int) {
+	lineWraped := wrap.String(line, width)
+	lineNum := strings.Count(lineWraped, "\n") + 1
+	return lineWraped, lineNum
+}
+
+func (r *Renderer) GetPos(id epub.ManifestId) int {
+	return r.buffer.BlockPos[id]
+}
+
+func (r *Renderer) GetVisualPos(id epub.ManifestId) int {
+	return r.offsets[r.buffer.BlockPos[id]]
+}
+
+// Parse iterates over the spine and parses each HTML file
+func (r *Renderer) Parse() error {
 	content, err := r.book.GetSpinContent()
 	if err != nil {
 		return err
 	}
 	for _, id := range content.Orders {
 		htmlContent := content.Contents[id]
-		r.Parse(htmlContent)
+		r.buffer.BlockPos[id] = len(r.buffer.Lines)
+		r.parse1(htmlContent)
 	}
 	return nil
 }
 
-func (r *Renderer) Parse(content string) error {
+func (r *Renderer) parse1(content string) error {
 	log.Infoln("Enter into parsing of HTML")
 	htmlNode, err := html.Parse(strings.NewReader(content))
 	if err != nil {
 		return err
 	}
-	if _, err := r.parse(htmlNode); err != nil {
+	if _, err := r.parse2(htmlNode); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *Renderer) parse(n *html.Node) (*Segment, error) {
+func (r *Renderer) parse2(n *html.Node) (*Segment, error) {
 	switch n.Type {
 	case html.TextNode:
 		if len(strings.TrimSpace(n.Data)) == 0 {
@@ -96,7 +102,7 @@ func (r *Renderer) parse(n *html.Node) (*Segment, error) {
 		return &Segment{n.Data, "", 0}, nil
 	case html.DocumentNode:
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if _, err := r.parse(c); err != nil {
+			if _, err := r.parse2(c); err != nil {
 				return nil, err
 			}
 		}
@@ -108,7 +114,7 @@ func (r *Renderer) parse(n *html.Node) (*Segment, error) {
 	pos := 0
 	contents := []string{}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		segment, err := r.parse(c)
+		segment, err := r.parse2(c)
 		if err != nil {
 			return nil, err
 		}
@@ -121,18 +127,18 @@ func (r *Renderer) parse(n *html.Node) (*Segment, error) {
 	}
 	lineContent := strings.Join(contents, "")
 	switch n.Data {
-	case "head", "html", "body":
+	case "head", "html", "body", "link":
 		// ignore
-	// case "body":
-	// 	if len(segments) != 0 {
-	// 		r.buffer.Lines = append(r.buffer.Lines, Line{lineContent, segments, ""})
-	// 	}
-	case "i":
+	case "svg", "image", "img":
+		// TODO: support image display
+	case "style":
+		// TODO: support inline style
+	case "i", "b", "strong", "span", "em":
 		if n.Parent.Data == "body" {
 			r.buffer.Lines = append(r.buffer.Lines, Line{lineContent, segments, n.Data})
 			return nil, nil
 		}
-		return &Segment{lineContent, "i", 0}, nil
+		return &Segment{lineContent, n.Data, 0}, nil
 	default:
 		r.buffer.Lines = append(r.buffer.Lines, Line{lineContent, segments, n.Data})
 	}

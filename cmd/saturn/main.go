@@ -8,10 +8,9 @@ import (
 	_ "github.com/elinx/saturn/pkg/logconfig"
 	"github.com/elinx/saturn/pkg/parser"
 	log "github.com/sirupsen/logrus"
-	tcell "github.com/zyedidia/tcell/v2"
 )
 
-type TextCell struct {
+/*type TextCell struct {
 	c     rune
 	X, Y  int
 	style tcell.Style
@@ -19,8 +18,8 @@ type TextCell struct {
 type mouseModel struct {
 	content        string
 	texts          []TextCell
-	selectionStart pos
-	selectionEnd   pos
+	selectionStart Pos
+	selectionEnd   Pos
 }
 
 func (m *mouseModel) Init() tea.Cmd {
@@ -43,12 +42,12 @@ func (m *mouseModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.MouseLeft:
 			log.Debugf("mouse left clicked: (%v, %v)", msg.X, msg.Y)
 			if m.selectionStart == invalidPos {
-				m.selectionStart = pos{msg.X, msg.Y}
+				m.selectionStart = Pos{msg.X, msg.Y}
 			}
 			m.texts[msg.X].style = m.texts[msg.X].style.Reverse(true)
 		case tea.MouseRelease:
 			log.Debugf("mouse release: (%v, %v)", msg.X, msg.Y)
-			m.selectionEnd = pos{msg.X, msg.Y}
+			m.selectionEnd = Pos{msg.X, msg.Y}
 			// m.markSelection()
 			m.selectionStart = invalidPos
 		}
@@ -75,8 +74,8 @@ func (m *mouseModel) markSelection() {
 	if m.selectionStart == invalidPos || m.selectionEnd == invalidPos {
 		return
 	}
-	if m.selectionEnd.y == m.selectionStart.y {
-		for x := m.selectionStart.x; x <= m.selectionEnd.x; x++ {
+	if m.selectionEnd.Y == m.selectionStart.Y {
+		for x := m.selectionStart.X; x <= m.selectionEnd.X; x++ {
 			m.texts[x].style = m.texts[x].style.Reverse(true)
 		}
 	}
@@ -88,7 +87,7 @@ func NewMouseModel() tea.Model {
 		selectionStart: invalidPos,
 		selectionEnd:   invalidPos,
 	}
-}
+}*/
 
 func main() {
 	log.Println("start app...")

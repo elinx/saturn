@@ -53,6 +53,8 @@ github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5Cc
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/xo/terminfo v0.0.0-20200218205459-454e5b68f9e8 h1:woqigIZtZUZxws1zZA99nAvuz2mQrxtWsuZSR9c8I/A=
 github.com/xo/terminfo v0.0.0-20200218205459-454e5b68f9e8/go.mod h1:6Yhx5ZJl5942QrNRWLwITArVT9okUXc5c3brgWJMoDc=
+github.com/zyedidia/go-runewidth v0.0.12 h1:aHWj8qL3aH7caRzoPBJXe1pEaZBXHpKtfTuiBo5p74Q=
+github.com/zyedidia/go-runewidth v0.0.12/go.mod h1:vF8djYdLmG8BJaUZ4CznFYCJ3pFR8m4B4VinTvTTarU=
 github.com/zyedidia/poller v1.0.1 h1:Tt9S3AxAjXwWGNiC2TUdRJkQDZSzCBNVQ4xXiQ7440s=
 github.com/zyedidia/poller v1.0.1/go.mod h1:vZXJOHGDcuK08GXhF6IAY0ZFd2WcgOR5DOTp84Uk5eE=
 github.com/zyedidia/tcell/v2 v2.0.8 h1:/WYLXyVJwSc6xQG1ZDXGpzTenzhWtRtsz4G5XsFKQQ4=

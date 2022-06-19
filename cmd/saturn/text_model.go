@@ -19,15 +19,15 @@ type textModel struct {
 	height        int
 	currSectionId epub.ManifestId
 
-	selectionStart pos
-	selectionEnd   pos
+	selectionStart parser.Pos
+	selectionEnd   parser.Pos
 }
 
-type pos struct {
-	x, y int
-}
+// type Pos struct {
+// 	X, Y int
+// }
 
-var invalidPos pos = pos{-1, -1}
+// var invalidPos Pos = Pos{-1, -1}
 
 func NewTextModel(book *epub.Epub, renderer *parser.Renderer,
 	currentId epub.ManifestId, prev tea.Model, width, height int) tea.Model {
@@ -39,8 +39,8 @@ func NewTextModel(book *epub.Epub, renderer *parser.Renderer,
 		width:          width,
 		height:         height,
 		currSectionId:  currentId,
-		selectionStart: invalidPos,
-		selectionEnd:   invalidPos,
+		selectionStart: parser.InvalidPos,
+		selectionEnd:   parser.InvalidPos,
 	}
 }
 
@@ -78,7 +78,7 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case BlockMessage:
 		id := message.(BlockMessage).ID
-		pos := m.renderer.GetVisualPos(id)
+		pos := m.renderer.GetVisualYPos(id)
 		m.viewport.SetYOffset(pos)
 	case tea.MouseMsg:
 		switch msg.Type {
@@ -88,14 +88,15 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		// 	m.continuePrevPage()
 		case tea.MouseLeft:
 			log.Debugf("mouse left clicked: (%v, %v)", msg.X, msg.Y)
-			if m.selectionStart == invalidPos {
-				m.selectionStart = pos{msg.X, msg.Y}
+			if m.selectionStart == parser.InvalidPos {
+				m.selectionStart = parser.Pos{msg.X, msg.Y}
 			}
+			m.markSelection(m.selectionStart, parser.Pos{msg.X, msg.Y})
+			m.renderer.Render(m.width)
 		case tea.MouseRelease:
 			log.Debugf("mouse release: (%v, %v)", msg.X, msg.Y)
-			m.selectionEnd = pos{msg.X, msg.Y}
-			m.markSelection()
-			m.selectionStart = invalidPos
+			m.selectionEnd = parser.Pos{msg.X, msg.Y}
+			m.selectionStart = parser.InvalidPos
 		}
 	}
 	var cmd tea.Cmd
@@ -146,7 +147,40 @@ func (m *textModel) View() string {
 // 	}
 // }
 
-func (m *textModel) markSelection() {
+func (m *textModel) viewportPosToVisualPos(p parser.Pos) parser.Pos {
+	return parser.Pos{
+		X: p.X,
+		Y: m.viewport.YOffset + p.Y,
+	}
+}
+
+func (m *textModel) visualPosToBufPos(p parser.Pos) parser.Pos {
+	return parser.Pos{
+		X: p.X,
+		Y: 0,
+	}
+}
+
+func (m *textModel) markPosition(p parser.Pos) {
+	visualLineNum := p.Y + m.viewport.YOffset
+	visualLineStart := m.renderer.GetVisualYPos1(visualLineNum)
+	originLineNum := m.renderer.GetOriginYPos(visualLineNum)
+	originPos := m.renderer.GetOriginXPos(originLineNum, p.X, visualLineNum-visualLineStart)
+	m.renderer.MarkPosition(originLineNum, originPos)
+}
+
+func (m *textModel) markSelection(start, end parser.Pos) {
+	m.markPosition(start)
+	// 1. which section is the selection start and end
+	// 2. which line is the selection start and end
+	// lineNum := m.viewport.YOffset + start.Y
+	// line := m.renderer.GetLine(lineNum)
+	// 3. which word is the selection start and end
+	// 4. which char is the selection start and end
+	// 5. mark the selection
+	// 6. update the viewport
+	// 7. update the selection start and end
+
 	// if m.selectionStart == invalidPos || m.selectionEnd == invalidPos {
 	// 	return
 	// }

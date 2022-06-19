@@ -1,10 +1,12 @@
 package parser
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/elinx/saturn/pkg/epub"
-	"github.com/muesli/reflow/wrap"
+	"github.com/elinx/saturn/pkg/util"
+	"github.com/muesli/termenv"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 )
@@ -27,9 +29,15 @@ type Buffer struct {
 }
 
 type Renderer struct {
-	book    *epub.Epub
-	buffer  *Buffer
-	offsets []int
+	book   *epub.Epub
+	buffer *Buffer
+
+	wrapWidth int
+
+	// lineYOffsets is the offset of each line in the buffer after
+	// being rendered to the screen. It is used to calculate the
+	// position of each rune in the line.
+	lineYOffsets []int
 }
 
 func New(book *epub.Epub) *Renderer {
@@ -39,12 +47,15 @@ func New(book *epub.Epub) *Renderer {
 	}}
 }
 
+// Render iterates over the buffer and renders each line to the screen.
 func (r *Renderer) Render(width int) string {
 	var lines []string
 	lineNumAccum := 0
+	r.wrapWidth = width
 	for _, line := range r.buffer.Lines {
-		lineWraped := wrap.String(line.Content, width)
-		r.offsets = append(r.offsets, lineNumAccum)
+		content := renderLine(line)
+		lineWraped := util.Wrap(content, width)
+		r.lineYOffsets = append(r.lineYOffsets, lineNumAccum)
 		lineNum := strings.Count(lineWraped, "\n") + 1
 		lineNumAccum += lineNum
 		lines = append(lines, lineWraped)
@@ -52,9 +63,42 @@ func (r *Renderer) Render(width int) string {
 	return strings.Join(lines, "\n")
 }
 
+// style returns the style of the given content with the given style
+// TODO: use a style sheet
+func style(content string, style string) string {
+	switch style {
+	case "title":
+		content = termenv.String(content).Bold().String()
+	case "highlight":
+		content = termenv.String(content).Underline().String()
+	case "italic":
+		content = termenv.String(content).Italic().String()
+	case "bold":
+		content = termenv.String(content).Bold().String()
+	case "underline":
+		content = termenv.String(content).Underline().String()
+	case "p":
+		content = termenv.String(content).Foreground(termenv.ANSICyan).String()
+	case "h1", "h2", "h3", "h4", "h5", "h6":
+		content = termenv.String(content).Foreground(termenv.ANSIBrightRed).Bold().String()
+	}
+	return content
+}
+
+func renderLine(line Line) string {
+	result := ""
+	for _, s := range line.Segments {
+		// if s.Pos > 0 && s.Pos < len(s.Content) {
+		// 	result = s.Content[:s.Pos] + "\x1b[7m" + s.Content[s.Pos:]
+		// }
+		result += style(s.Content, s.Style)
+	}
+	return style(result, line.Style)
+}
+
 // renderWrap wraps the content of the line with the given width
 func (r *Renderer) renderWrap(line string, width int) (string, int) {
-	lineWraped := wrap.String(line, width)
+	lineWraped := util.Wrap(line, width)
 	lineNum := strings.Count(lineWraped, "\n") + 1
 	return lineWraped, lineNum
 }
@@ -63,8 +107,38 @@ func (r *Renderer) GetPos(id epub.ManifestId) int {
 	return r.buffer.BlockPos[id]
 }
 
-func (r *Renderer) GetVisualPos(id epub.ManifestId) int {
-	return r.offsets[r.buffer.BlockPos[id]]
+func (r *Renderer) GetVisualYPos(id epub.ManifestId) int {
+	return r.lineYOffsets[r.buffer.BlockPos[id]]
+}
+
+func (r *Renderer) GetVisualYPos1(line int) int {
+	return r.lineYOffsets[line]
+}
+
+func (r *Renderer) MarkPosition(lineNum int, x int) {
+	line := r.buffer.Lines[lineNum]
+	line.Segments = append(line.Segments, Segment{
+		Content: "",
+		Style:   "position: absolute; left: " + strconv.Itoa(x) + "px;",
+		Pos:     x,
+	})
+	r.buffer.Lines[lineNum] = line
+}
+
+func (r *Renderer) GetOriginYPos(visualLineNum int) int {
+	for i, v := range r.lineYOffsets {
+		if v == visualLineNum {
+			return i
+		} else if v > visualLineNum {
+			return i - 1
+		}
+	}
+	return len(r.lineYOffsets) - 1
+}
+
+func (r *Renderer) GetOriginXPos(originLineNum int, visualXPos, visualYPos int) int {
+	line := r.buffer.Lines[originLineNum].Content
+	return util.LocBeforeWraped(line, r.wrapWidth, visualXPos, visualYPos)
 }
 
 // Parse iterates over the spine and parses each HTML file

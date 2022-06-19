@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/elinx/saturn/pkg/epub"
 	"github.com/elinx/saturn/pkg/util"
@@ -11,10 +11,19 @@ import (
 	"golang.org/x/net/html"
 )
 
+// RuneIndex returns the index of the rune in the given string
+type RuneIndex int
+
+// ByteIndex returns the index of the byte in the given string
+type ByteIndex int
+
+// VisualIndex returns the visual index of the screen position
+type VisualIndex int
+
 type Segment struct {
 	Content string
 	Style   string
-	Pos     int
+	Pos     ByteIndex
 }
 type Line struct {
 	Content  string
@@ -53,7 +62,7 @@ func (r *Renderer) Render(width int) string {
 	lineNumAccum := 0
 	r.wrapWidth = width
 	for _, line := range r.buffer.Lines {
-		content := renderLine(line)
+		content := renderLine1(line)
 		lineWraped := util.Wrap(content, width)
 		r.lineYOffsets = append(r.lineYOffsets, lineNumAccum)
 		lineNum := strings.Count(lineWraped, "\n") + 1
@@ -65,7 +74,7 @@ func (r *Renderer) Render(width int) string {
 
 // style returns the style of the given content with the given style
 // TODO: use a style sheet
-func style(content string, style string) string {
+func style(content string, pos ByteIndex, style string) string {
 	switch style {
 	case "title":
 		content = termenv.String(content).Bold().String()
@@ -81,19 +90,52 @@ func style(content string, style string) string {
 		content = termenv.String(content).Foreground(termenv.ANSICyan).String()
 	case "h1", "h2", "h3", "h4", "h5", "h6":
 		content = termenv.String(content).Foreground(termenv.ANSIBrightRed).Bold().String()
+	case "cursor":
+		width := ByteIndex(len(content))
+		content = content[:pos] +
+			termenv.String(string(content[pos:pos+width])).Reverse().Blink().String() +
+			content[pos+width:]
+	default:
+		content = termenv.String(content).String()
 	}
 	return content
 }
 
 func renderLine(line Line) string {
 	result := ""
+	cursors := []*Segment{}
 	for _, s := range line.Segments {
-		// if s.Pos > 0 && s.Pos < len(s.Content) {
-		// 	result = s.Content[:s.Pos] + "\x1b[7m" + s.Content[s.Pos:]
-		// }
-		result += style(s.Content, s.Style)
+		result += style(s.Content, s.Pos, s.Style)
+		if s.Style == "cursor" {
+			cursors = append(cursors, &s)
+		}
 	}
-	return style(result, line.Style)
+	for _, s := range cursors {
+		width := len(s.Content)
+		result = line.Content[:s.Pos] +
+			termenv.String(string(line.Content[s.Pos:s.Pos+ByteIndex(width)])).Reverse().Blink().String() +
+			line.Content[s.Pos+ByteIndex(width):]
+	}
+	return style(result, 0, line.Style)
+}
+
+func renderLine1(line Line) string {
+	result := ""
+	content := line.Content
+	index := ByteIndex(0)
+	for len(content) > 0 {
+		rune, size := utf8.DecodeRuneInString(content)
+		styled := string(rune)
+		for _, s := range line.Segments {
+			if s.Pos <= index && s.Pos+ByteIndex(len(s.Content)) > index {
+				styled = style(styled, s.Pos, s.Style)
+			}
+		}
+		result += styled
+		index += ByteIndex(size)
+		content = content[size:]
+	}
+	return result
 }
 
 // renderWrap wraps the content of the line with the given width
@@ -115,12 +157,18 @@ func (r *Renderer) GetVisualYPos1(line int) int {
 	return r.lineYOffsets[line]
 }
 
-func (r *Renderer) MarkPosition(lineNum int, x int) {
+func rune2ByteIndex(line string, runeIndex RuneIndex) ByteIndex {
+	return ByteIndex(len(string([]rune(line)[:runeIndex])))
+}
+
+func (r *Renderer) MarkPosition(lineNum int, x RuneIndex) {
+	// lineNum = 0
+	// x = 0
 	line := r.buffer.Lines[lineNum]
 	line.Segments = append(line.Segments, Segment{
-		Content: "",
-		Style:   "position: absolute; left: " + strconv.Itoa(x) + "px;",
-		Pos:     x,
+		Content: string([]rune(line.Content)[x]),
+		Style:   "cursor",
+		Pos:     rune2ByteIndex(line.Content, x),
 	})
 	r.buffer.Lines[lineNum] = line
 }
@@ -136,9 +184,9 @@ func (r *Renderer) GetOriginYPos(visualLineNum int) int {
 	return len(r.lineYOffsets) - 1
 }
 
-func (r *Renderer) GetOriginXPos(originLineNum int, visualXPos, visualYPos int) int {
+func (r *Renderer) GetOriginXPos(originLineNum int, visualXPos, visualYPos int) RuneIndex {
 	line := r.buffer.Lines[originLineNum].Content
-	return util.LocBeforeWraped(line, r.wrapWidth, visualXPos, visualYPos)
+	return RuneIndex(util.LocBeforeWraped(line, r.wrapWidth, visualXPos, visualYPos))
 }
 
 // Parse iterates over the spine and parses each HTML file
@@ -185,7 +233,7 @@ func (r *Renderer) parse2(n *html.Node) (*Segment, error) {
 		return nil, nil
 	}
 	var segments []Segment
-	pos := 0
+	pos := ByteIndex(0)
 	contents := []string{}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		segment, err := r.parse2(c)
@@ -196,7 +244,7 @@ func (r *Renderer) parse2(n *html.Node) (*Segment, error) {
 			segment.Pos = pos
 			segments = append(segments, *segment)
 			contents = append(contents, segment.Content)
-			pos += len(segment.Content)
+			pos += ByteIndex(len(segment.Content))
 		}
 	}
 	lineContent := strings.Join(contents, "")

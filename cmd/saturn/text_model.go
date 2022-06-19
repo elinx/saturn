@@ -92,7 +92,7 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectionStart = parser.Pos{msg.X, msg.Y}
 			}
 			m.markSelection(m.selectionStart, parser.Pos{msg.X, msg.Y})
-			m.renderer.Render(m.width)
+			m.viewport.SetContent(m.renderer.Render(m.width))
 		case tea.MouseRelease:
 			log.Debugf("mouse release: (%v, %v)", msg.X, msg.Y)
 			m.selectionEnd = parser.Pos{msg.X, msg.Y}

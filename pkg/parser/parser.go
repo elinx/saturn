@@ -20,6 +20,12 @@ type ByteIndex int
 // VisualIndex returns the visual index of the screen position
 type VisualIndex int
 
+// TextLineIndex is the index of the line in the buffer
+type TextLineIndex int
+
+// VisualLineIndex is the index of the line in the rendered buffer
+type VisualLineIndex int
+
 type Segment struct {
 	Content string
 	Style   string
@@ -34,7 +40,7 @@ type Buffer struct {
 	Lines []Line
 
 	// The position of each block of the spine in the Lines
-	BlockPos map[epub.ManifestId]int
+	BlockPos map[epub.ManifestId]TextLineIndex
 }
 
 type Renderer struct {
@@ -46,13 +52,13 @@ type Renderer struct {
 	// lineYOffsets is the offset of each line in the buffer after
 	// being rendered to the screen. It is used to calculate the
 	// position of each rune in the line.
-	lineYOffsets []int
+	lineYOffsets []VisualLineIndex
 }
 
 func New(book *epub.Epub) *Renderer {
 	return &Renderer{book: book, buffer: &Buffer{
 		Lines:    []Line{},
-		BlockPos: make(map[epub.ManifestId]int),
+		BlockPos: make(map[epub.ManifestId]TextLineIndex),
 	}}
 }
 
@@ -64,7 +70,7 @@ func (r *Renderer) Render(width int) string {
 	for _, line := range r.buffer.Lines {
 		content := renderLine1(line)
 		lineWraped := util.Wrap(content, width)
-		r.lineYOffsets = append(r.lineYOffsets, lineNumAccum)
+		r.lineYOffsets = append(r.lineYOffsets, VisualLineIndex(lineNumAccum))
 		lineNum := strings.Count(lineWraped, "\n") + 1
 		lineNumAccum += lineNum
 		lines = append(lines, lineWraped)
@@ -142,25 +148,25 @@ func (r *Renderer) renderWrap(line string, width int) (string, int) {
 	return lineWraped, lineNum
 }
 
-func (r *Renderer) GetPos(id epub.ManifestId) int {
+func (r *Renderer) GetPos(id epub.ManifestId) TextLineIndex {
 	return r.buffer.BlockPos[id]
 }
 
-func (r *Renderer) GetVisualYPos(id epub.ManifestId) int {
+func (r *Renderer) GetVisualYPos(id epub.ManifestId) VisualLineIndex {
 	return r.lineYOffsets[r.buffer.BlockPos[id]]
 }
 
-func (r *Renderer) GetVisualYPos1(line int) int {
-	return r.lineYOffsets[line]
+// GetVisualYStart returns the y position of the first line of the given
+// visual index(one buffer line maybe rendered to multiple screen lines)
+func (r *Renderer) GetVisualYStart(line VisualLineIndex) VisualLineIndex {
+	return r.lineYOffsets[r.GetOriginYPos(line)]
 }
 
 func rune2ByteIndex(line string, runeIndex RuneIndex) ByteIndex {
 	return ByteIndex(len(string([]rune(line)[:runeIndex])))
 }
 
-func (r *Renderer) MarkPosition(lineNum int, x RuneIndex) {
-	// lineNum = 0
-	// x = 0
+func (r *Renderer) MarkPosition(lineNum TextLineIndex, x RuneIndex) {
 	line := r.buffer.Lines[lineNum]
 	line.Segments = append(line.Segments, Segment{
 		Content: string([]rune(line.Content)[x]),
@@ -170,19 +176,19 @@ func (r *Renderer) MarkPosition(lineNum int, x RuneIndex) {
 	r.buffer.Lines[lineNum] = line
 }
 
-func (r *Renderer) GetOriginYPos(visualLineNum int) int {
+func (r *Renderer) GetOriginYPos(visualLineNum VisualLineIndex) TextLineIndex {
 	for i, v := range r.lineYOffsets {
 		if v == visualLineNum {
-			return i
+			return TextLineIndex(i)
 		} else if v > visualLineNum {
-			return i - 1
+			return TextLineIndex(i - 1)
 		}
 	}
-	return len(r.lineYOffsets) - 1
+	return TextLineIndex(len(r.lineYOffsets) - 1)
 }
 
-func (r *Renderer) GetOriginXPos(originLineNum int, visualXPos, visualYPos int) RuneIndex {
-	line := r.buffer.Lines[originLineNum].Content
+func (r *Renderer) GetOriginXPos(bufferLineNum TextLineIndex, visualXPos, visualYPos int) RuneIndex {
+	line := r.buffer.Lines[bufferLineNum].Content
 	return RuneIndex(util.LocBeforeWraped(line, r.wrapWidth, visualXPos, visualYPos))
 }
 
@@ -194,7 +200,7 @@ func (r *Renderer) Parse() error {
 	}
 	for _, id := range content.Orders {
 		htmlContent := content.Contents[id]
-		r.buffer.BlockPos[id] = len(r.buffer.Lines)
+		r.buffer.BlockPos[id] = TextLineIndex(len(r.buffer.Lines))
 		r.parse1(htmlContent)
 	}
 	return nil

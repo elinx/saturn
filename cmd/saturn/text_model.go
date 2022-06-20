@@ -79,7 +79,7 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case BlockMessage:
 		id := message.(BlockMessage).ID
 		pos := m.renderer.GetVisualYPos(id)
-		m.viewport.SetYOffset(pos)
+		m.viewport.SetYOffset(int(pos))
 	case tea.MouseMsg:
 		switch msg.Type {
 		// case tea.MouseWheelDown:
@@ -162,11 +162,11 @@ func (m *textModel) visualPosToBufPos(p parser.Pos) parser.Pos {
 }
 
 func (m *textModel) markPosition(p parser.Pos) {
-	visualLineNum := p.Y + m.viewport.YOffset
-	visualLineStart := m.renderer.GetVisualYPos1(visualLineNum)
-	originLineNum := m.renderer.GetOriginYPos(visualLineNum)
-	originPos := m.renderer.GetOriginXPos(originLineNum, p.X, visualLineNum-visualLineStart)
-	m.renderer.MarkPosition(originLineNum, originPos)
+	visualLineNum := parser.VisualLineIndex(p.Y + m.viewport.YOffset)
+	bufferLineNum := m.renderer.GetOriginYPos(visualLineNum)
+	visualLineStart := m.renderer.GetVisualYStart(visualLineNum)
+	originPos := m.renderer.GetOriginXPos(bufferLineNum, p.X, int(visualLineNum-visualLineStart))
+	m.renderer.MarkPosition(bufferLineNum, originPos)
 }
 
 func (m *textModel) markSelection(start, end parser.Pos) {

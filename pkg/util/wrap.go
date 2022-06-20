@@ -65,7 +65,7 @@ func Wrap(line string, limit int) string {
 // character. The result is the rune index of the character before the wraped.
 func LocBeforeWraped(line string, limit int, vx, vy int) int {
 	if len(line) <= limit || vy == 0 {
-		return vx
+		return MinInt(vx, len([]rune(line))-1)
 	}
 	ansi := false
 	lineWidth := 0
@@ -105,4 +105,18 @@ func LocBeforeWraped(line string, limit int, vx, vy int) int {
 		}
 	}
 	return x
+}
+
+func MinInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func MaxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

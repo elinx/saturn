@@ -77,10 +77,10 @@ func (r *Renderer) Render(width int) string {
 func style(content string, pos ByteIndex, style string) string {
 	switch style {
 	case "title":
-		content = termenv.String(content).Bold().String()
+		content = termenv.String(content).Foreground(termenv.ANSIBrightRed).Bold().String()
 	case "highlight":
 		content = termenv.String(content).Underline().String()
-	case "italic":
+	case "italic", "i":
 		content = termenv.String(content).Italic().String()
 	case "bold":
 		content = termenv.String(content).Bold().String()
@@ -91,10 +91,7 @@ func style(content string, pos ByteIndex, style string) string {
 	case "h1", "h2", "h3", "h4", "h5", "h6":
 		content = termenv.String(content).Foreground(termenv.ANSIBrightRed).Bold().String()
 	case "cursor":
-		width := ByteIndex(len(content))
-		content = content[:pos] +
-			termenv.String(string(content[pos:pos+width])).Reverse().Blink().String() +
-			content[pos+width:]
+		content = termenv.String(content).Reverse().Blink().String()
 	default:
 		content = termenv.String(content).String()
 	}
@@ -135,7 +132,7 @@ func renderLine1(line Line) string {
 		index += ByteIndex(size)
 		content = content[size:]
 	}
-	return result
+	return style(result, 0, line.Style)
 }
 
 // renderWrap wraps the content of the line with the given width

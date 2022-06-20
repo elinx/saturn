@@ -6,6 +6,10 @@ import (
 	"github.com/zyedidia/go-runewidth"
 )
 
+func IsTerminator(c rune) bool {
+	return (c >= 0x40 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)
+}
+
 // Wrap wraps the given string to the given width.
 // The result is a string with newlines inserted at the right places.
 // The result is guaranteed to be shorter than the given width.
@@ -19,8 +23,23 @@ func Wrap(line string, limit int) string {
 	}
 	lineWidth := 0
 	result := ""
+	ansi := false
 	for len(line) > 0 {
 		rune, size := utf8.DecodeRuneInString(line)
+		if rune == '\x1b' {
+			ansi = true
+			result += string(rune)
+			line = line[size:]
+			continue
+		}
+		if ansi {
+			if IsTerminator(rune) {
+				ansi = false
+			}
+			result += string(rune)
+			line = line[size:]
+			continue
+		}
 		if rune == '\n' {
 			lineWidth = 0
 			line = line[size:]
@@ -48,10 +67,23 @@ func LocBeforeWraped(line string, limit int, vx, vy int) int {
 	if len(line) <= limit || vy == 0 {
 		return vx
 	}
+	ansi := false
 	lineWidth := 0
 	x := 0
 	for len(line) > 0 {
 		rune, size := utf8.DecodeRuneInString(line)
+		if rune == '\x1b' {
+			ansi = true
+			line = line[size:]
+			continue
+		}
+		if ansi {
+			if IsTerminator(rune) {
+				ansi = false
+			}
+			line = line[size:]
+			continue
+		}
 		if rune == '\n' {
 			lineWidth = 0
 			line = line[size:]

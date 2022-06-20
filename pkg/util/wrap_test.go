@@ -113,6 +113,21 @@ func TestWrap(t *testing.T) {
 			Expected: "道t\nao\n可\n道\n非\n常\n道",
 			Limit:    3,
 		},
+		{
+			Input:    "道\x1b[7m可道非常\x1b[0m道",
+			Expected: "道\x1b[7m可道\n非常\x1b[0m道",
+			Limit:    6,
+		},
+		{
+			Input:    "道\x1b[7m可道非常\x1b[0m道",
+			Expected: "道\x1b[7m可道非\n常\x1b[0m道",
+			Limit:    9,
+		},
+		{
+			Input:    "道\x1b[7m可道非常\x1b[0m道",
+			Expected: "道\x1b[7m可道非常\x1b[0m道",
+			Limit:    13,
+		},
 	}
 
 	for i, tc := range tt {
@@ -174,6 +189,13 @@ func TestWrapPos(t *testing.T) {
 		},
 		{
 			Input:    "道可道非常道",
+			Limit:    6,
+			Expected: 4,
+			VX:       1,
+			VY:       1,
+		},
+		{
+			Input:    "道\x1b[7m可道非常\x1b[0m道",
 			Limit:    6,
 			Expected: 4,
 			VX:       1,

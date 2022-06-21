@@ -7,13 +7,15 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/elinx/saturn/pkg/parser"
 )
 
 // New returns a new model with the given width and height as well as default
 // keymappings.
-func New(width, height int) (m Model) {
+func New(width, height int, renderer *parser.Renderer) (m Model) {
 	m.Width = width
 	m.Height = height
+	m.renderer = renderer
 	m.setInitialValues()
 	return m
 }
@@ -53,7 +55,12 @@ type Model struct {
 	HighPerformanceRendering bool
 
 	initialized bool
-	lines       []string
+
+	renderer *parser.Renderer
+}
+
+func (m *Model) linesNum() int {
+	return m.renderer.VisualLinesNum()
 }
 
 func (m *Model) setInitialValues() {
@@ -87,40 +94,41 @@ func (m Model) PastBottom() bool {
 
 // ScrollPercent returns the amount scrolled as a float between 0 and 1.
 func (m Model) ScrollPercent() float64 {
-	if m.Height >= len(m.lines) {
+	if m.Height >= m.linesNum() {
 		return 1.0
 	}
 	y := float64(m.YOffset)
 	h := float64(m.Height)
-	t := float64(len(m.lines) - 1)
+	t := float64(m.linesNum() - 1)
 	v := y / (t - h)
 	return math.Max(0.0, math.Min(1.0, v))
 }
 
 // SetContent set the pager's text content. For high performance rendering the
 // Sync command should also be called.
-func (m *Model) SetContent(s string) {
-	s = strings.ReplaceAll(s, "\r\n", "\n") // normalize line endings
-	m.lines = strings.Split(s, "\n")
+// func (m *Model) SetContent(s string) {
+// 	s = strings.ReplaceAll(s, "\r\n", "\n") // normalize line endings
+// 	m.lines = strings.Split(s, "\n")
 
-	if m.YOffset > len(m.lines)-1 {
-		m.GotoBottom()
-	}
-}
+// 	if m.YOffset > m.linesNum()-1 {
+// 		m.GotoBottom()
+// 	}
+// }
 
 // maxYOffset returns the maximum possible value of the y-offset based on the
 // viewport's content and set height.
 func (m Model) maxYOffset() int {
-	return max(0, len(m.lines)-m.Height)
+	return max(0, m.linesNum()-m.Height)
 }
 
 // visibleLines returns the lines that should currently be visible in the
 // viewport.
 func (m Model) visibleLines() (lines []string) {
-	if len(m.lines) > 0 {
+	if m.linesNum() > 0 {
 		top := max(0, m.YOffset)
-		bottom := clamp(m.YOffset+m.Height, top, len(m.lines))
-		lines = m.lines[top:bottom]
+		bottom := clamp(m.YOffset+m.Height, top, m.linesNum())
+		// lines = m.lines[top:bottom]
+		lines = m.renderer.VisualLines(parser.VisualLineIndex(top), parser.VisualLineIndex(bottom))
 	}
 	return lines
 }
@@ -229,7 +237,7 @@ func (m *Model) GotoBottom() (lines []string) {
 //
 // For high performance rendering only.
 func Sync(m Model) tea.Cmd {
-	if len(m.lines) == 0 {
+	if m.linesNum() == 0 {
 		return nil
 	}
 	top, bottom := m.scrollArea()

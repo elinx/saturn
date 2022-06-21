@@ -6,7 +6,6 @@ import (
 	"github.com/elinx/saturn/pkg/epub"
 	"github.com/elinx/saturn/pkg/parser"
 	"github.com/elinx/saturn/pkg/viewport"
-	"github.com/muesli/reflow/wrap"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,7 +34,7 @@ func NewTextModel(book *epub.Epub, renderer *parser.Renderer,
 		book:           book,
 		renderer:       renderer,
 		prevModel:      prev,
-		viewport:       viewport.New(width, height),
+		viewport:       viewport.New(width, height, renderer),
 		width:          width,
 		height:         height,
 		currSectionId:  currentId,
@@ -51,15 +50,15 @@ func (m *textModel) Init() tea.Cmd {
 	// 	return tea.Quit
 	// }
 	// content = m.renderContent(content)
-	content := m.renderer.Render(m.width)
+	m.renderer.Render(m.width)
 	m.viewport.Style = lipgloss.NewStyle()
 	// Bold(true).
 	// Foreground(lipgloss.Color("#FAFAFA")).
 	// Background(lipgloss.Color("#7D56F4")).
 	// PaddingTop(2).
 	// PaddingLeft(2)
-	content = wrap.String(content, m.width)
-	m.viewport.SetContent(content)
+	// content = wrap.String(content, m.width)
+	// m.viewport.SetContent(content)
 	return nil
 }
 
@@ -92,7 +91,6 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectionStart = parser.Pos{msg.X, msg.Y}
 			}
 			m.markSelection(m.selectionStart, parser.Pos{msg.X, msg.Y})
-			m.viewport.SetContent(m.renderer.Render(m.width))
 		case tea.MouseRelease:
 			log.Debugf("mouse release: (%v, %v)", msg.X, msg.Y)
 			m.selectionEnd = parser.Pos{msg.X, msg.Y}

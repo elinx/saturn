@@ -53,6 +53,8 @@ type Renderer struct {
 	// being rendered to the screen. It is used to calculate the
 	// position of each rune in the line.
 	lineYOffsets []VisualLineIndex
+
+	visualLines []string
 }
 
 func New(book *epub.Epub) *Renderer {
@@ -60,6 +62,14 @@ func New(book *epub.Epub) *Renderer {
 		Lines:    []Line{},
 		BlockPos: make(map[epub.ManifestId]TextLineIndex),
 	}}
+}
+
+func (r *Renderer) VisualLinesNum() int {
+	return len(r.visualLines)
+}
+
+func (r *Renderer) VisualLines(start, end VisualLineIndex) []string {
+	return r.visualLines[start:end]
 }
 
 // Render iterates over the buffer and renders each line to the screen.
@@ -73,6 +83,8 @@ func (r *Renderer) Render(width int) string {
 		r.lineYOffsets = append(r.lineYOffsets, VisualLineIndex(lineNumAccum))
 		lineNum := strings.Count(lineWraped, "\n") + 1
 		lineNumAccum += lineNum
+		visualLines := strings.Split(lineWraped, "\n")
+		r.visualLines = append(r.visualLines, visualLines...)
 		lines = append(lines, lineWraped)
 	}
 	return strings.Join(lines, "\n")
@@ -176,6 +188,11 @@ func (r *Renderer) MarkPosition(lineNum TextLineIndex, x RuneIndex) {
 			Pos:     rune2ByteIndex(line.Content, x),
 		})
 		r.buffer.Lines[lineNum] = line
+	}
+	// update visual lines
+	lines := strings.Split(util.Wrap(renderLine1(line), r.wrapWidth), "\n")
+	for i, v := range lines {
+		r.visualLines[r.lineYOffsets[lineNum]+VisualLineIndex(i)] = v
 	}
 }
 

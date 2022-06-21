@@ -128,7 +128,7 @@ func renderLine1(line Line) string {
 	index := ByteIndex(0)
 	for len(content) > 0 {
 		rune, size := utf8.DecodeRuneInString(content)
-		styled := string(rune)
+		styled := style(string(rune), 0, line.Style)
 		for _, s := range line.Segments {
 			if s.Pos <= index && s.Pos+ByteIndex(len(s.Content)) > index {
 				styled = style(styled, s.Pos, s.Style)
@@ -138,7 +138,7 @@ func renderLine1(line Line) string {
 		index += ByteIndex(size)
 		content = content[size:]
 	}
-	return style(result, 0, line.Style)
+	return result
 }
 
 // renderWrap wraps the content of the line with the given width

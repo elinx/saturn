@@ -168,12 +168,15 @@ func rune2ByteIndex(line string, runeIndex RuneIndex) ByteIndex {
 
 func (r *Renderer) MarkPosition(lineNum TextLineIndex, x RuneIndex) {
 	line := r.buffer.Lines[lineNum]
-	line.Segments = append(line.Segments, Segment{
-		Content: string([]rune(line.Content)[x]),
-		Style:   "cursor",
-		Pos:     rune2ByteIndex(line.Content, x),
-	})
-	r.buffer.Lines[lineNum] = line
+	// TODO: show one space if the cursor is at an empty line
+	if len(line.Content) > 0 {
+		line.Segments = append(line.Segments, Segment{
+			Content: string([]rune(line.Content)[x]),
+			Style:   "cursor",
+			Pos:     rune2ByteIndex(line.Content, x),
+		})
+		r.buffer.Lines[lineNum] = line
+	}
 }
 
 func (r *Renderer) GetOriginYPos(visualLineNum VisualLineIndex) TextLineIndex {

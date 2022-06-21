@@ -179,6 +179,7 @@ func rune2ByteIndex(line string, runeIndex RuneIndex) ByteIndex {
 }
 
 func (r *Renderer) MarkPosition(lineNum TextLineIndex, x RuneIndex) {
+	log.Debugf("MarkPosition: %d, %d", lineNum, x)
 	line := r.buffer.Lines[lineNum]
 	// TODO: show one space if the cursor is at an empty line
 	if len(line.Content) > 0 {
@@ -191,7 +192,9 @@ func (r *Renderer) MarkPosition(lineNum TextLineIndex, x RuneIndex) {
 	}
 	// update visual lines
 	lines := strings.Split(util.Wrap(renderLine1(line), r.wrapWidth), "\n")
+	log.Debugf("rendering line %d: %s", lineNum, lines)
 	for i, v := range lines {
+		log.Debugf("updating line %d: %s", r.lineYOffsets[lineNum]+VisualLineIndex(i), v)
 		r.visualLines[r.lineYOffsets[lineNum]+VisualLineIndex(i)] = v
 	}
 }
@@ -209,6 +212,7 @@ func (r *Renderer) GetOriginYPos(visualLineNum VisualLineIndex) TextLineIndex {
 
 func (r *Renderer) GetOriginXPos(bufferLineNum TextLineIndex, visualXPos, visualYPos int) RuneIndex {
 	line := r.buffer.Lines[bufferLineNum].Content
+	log.Debugf("GetOriginXPos: %d, %d, %d", bufferLineNum, visualXPos, visualYPos)
 	return RuneIndex(util.LocBeforeWraped(line, r.wrapWidth, visualXPos, visualYPos))
 }
 

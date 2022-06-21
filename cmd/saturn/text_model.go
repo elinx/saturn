@@ -160,15 +160,19 @@ func (m *textModel) visualPosToBufPos(p parser.Pos) parser.Pos {
 }
 
 func (m *textModel) markPosition(p parser.Pos) {
+	log.Debugf("mark position: (%v, %v)", p.X, p.Y)
 	visualLineNum := parser.VisualLineIndex(p.Y + m.viewport.YOffset)
 	bufferLineNum := m.renderer.GetOriginYPos(visualLineNum)
 	visualLineStart := m.renderer.GetVisualYStart(visualLineNum)
 	originPos := m.renderer.GetOriginXPos(bufferLineNum, p.X, int(visualLineNum-visualLineStart))
 	m.renderer.MarkPosition(bufferLineNum, originPos)
+	log.Debugf("visual line num: %v", visualLineNum)
+	log.Debugf("mark position: (%v, %v)", bufferLineNum, originPos)
+	log.Debugf("visual line start: %v", visualLineStart)
 }
 
 func (m *textModel) markSelection(start, end parser.Pos) {
-	m.markPosition(start)
+	m.markPosition(end)
 	// 1. which section is the selection start and end
 	// 2. which line is the selection start and end
 	// lineNum := m.viewport.YOffset + start.Y

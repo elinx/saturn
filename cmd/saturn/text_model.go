@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/elinx/saturn/pkg/epub"
 	"github.com/elinx/saturn/pkg/parser"
+	"github.com/elinx/saturn/pkg/viewport"
 	"github.com/muesli/reflow/wrap"
 	log "github.com/sirupsen/logrus"
 )

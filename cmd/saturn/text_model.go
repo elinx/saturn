@@ -5,6 +5,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/elinx/saturn/pkg/epub"
 	"github.com/elinx/saturn/pkg/parser"
+	"github.com/elinx/saturn/pkg/util"
 	"github.com/elinx/saturn/pkg/viewport"
 	log "github.com/sirupsen/logrus"
 )
@@ -86,14 +87,16 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		// case tea.MouseWheelUp:
 		// 	m.continuePrevPage()
 		case tea.MouseLeft:
-			log.Debugf("mouse left clicked: (%v, %v)", msg.X, msg.Y)
+			x, y := util.MaxInt(0, msg.X-1), msg.Y
+			log.Debugf("mouse left clicked: (%v, %v)", y, x)
 			if m.selectionStart == parser.InvalidPos {
-				m.selectionStart = parser.Pos{msg.X, msg.Y}
+				m.selectionStart = parser.Pos{x, y}
 			}
-			m.markSelection(m.selectionStart, parser.Pos{msg.X, msg.Y})
+			m.markSelection(m.selectionStart, parser.Pos{x, y})
 		case tea.MouseRelease:
-			log.Debugf("mouse release: (%v, %v)", msg.X, msg.Y)
-			m.selectionEnd = parser.Pos{msg.X, msg.Y}
+			x, y := util.MaxInt(0, msg.X-1), msg.Y
+			log.Debugf("mouse release: (%v, %v)", y, x)
+			m.selectionEnd = parser.Pos{x, y}
 			m.selectionStart = parser.InvalidPos
 		}
 	}
@@ -160,7 +163,7 @@ func (m *textModel) visualPosToBufPos(p parser.Pos) parser.Pos {
 }
 
 func (m *textModel) markPosition(p parser.Pos) {
-	log.Debugf("mark position: (%v, %v)", p.X, p.Y)
+	log.Debugf("mark position: (%v, %v)", p.Y, p.X)
 	visualLineNum := parser.VisualLineIndex(p.Y + m.viewport.YOffset)
 	bufferLineNum := m.renderer.GetOriginYPos(visualLineNum)
 	visualLineStart := m.renderer.GetVisualYStart(visualLineNum)

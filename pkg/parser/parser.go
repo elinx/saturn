@@ -212,7 +212,7 @@ func (r *Renderer) GetOriginYPos(visualLineNum VisualLineIndex) TextLineIndex {
 
 func (r *Renderer) GetOriginXPos(bufferLineNum TextLineIndex, visualXPos, visualYPos int) RuneIndex {
 	line := r.buffer.Lines[bufferLineNum].Content
-	log.Debugf("GetOriginXPos: %d, %d, %d", bufferLineNum, visualXPos, visualYPos)
+	log.Debugf("GetOriginXPos: %d, %d, %d", bufferLineNum, visualYPos, visualXPos)
 	return RuneIndex(util.LocBeforeWraped(line, r.wrapWidth, visualXPos, visualYPos))
 }
 

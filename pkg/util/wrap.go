@@ -65,9 +65,6 @@ func Wrap(line string, limit int) string {
 // character. The result is the rune index of the character before the wraped.
 func LocBeforeWraped(line string, limit int, vx, vy int) int {
 	runes := utf8.RuneCount([]byte(line))
-	if len(line) <= limit || vy == 0 {
-		return MaxInt(0, MinInt(vx, runes-1))
-	}
 	ansi := false
 	lineWidth := 0
 	x := 0
@@ -93,16 +90,17 @@ func LocBeforeWraped(line string, limit int, vx, vy int) int {
 			continue
 		}
 		cellWidth := runewidth.RuneWidth(rune)
+		if vy == 0 && (vx >= lineWidth && vx < lineWidth+cellWidth) {
+			return x
+		}
 		if lineWidth+cellWidth <= limit {
 			lineWidth += cellWidth
 			line = line[size:]
 			x++
-		} else if lineWidth+cellWidth > limit {
+		}
+		if lineWidth >= limit {
 			lineWidth = 0
 			vy--
-		}
-		if vy == 0 && vx <= lineWidth {
-			return x
 		}
 		if x >= runes {
 			return runes - 1

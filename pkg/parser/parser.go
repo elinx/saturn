@@ -171,11 +171,20 @@ func (r *Renderer) GetVisualYPos(id epub.ManifestId) VisualLineIndex {
 // GetVisualYStart returns the y position of the first line of the given
 // visual index(one buffer line maybe rendered to multiple screen lines)
 func (r *Renderer) GetVisualYStart(line VisualLineIndex) VisualLineIndex {
-	return r.lineYOffsets[r.GetOriginYPos(line)]
+	return r.lineYOffsets[r.GetBufferY(line)]
 }
 
 func rune2ByteIndex(line string, runeIndex RuneIndex) ByteIndex {
 	return ByteIndex(len(string([]rune(line)[:runeIndex])))
+}
+
+func (r *Renderer) updateVisualLines(linum TextLineIndex, line Line) {
+	lines := strings.Split(util.Wrap(renderLine1(line), r.wrapWidth), "\n")
+	log.Debugf("rendering line %d: %s", linum, lines)
+	for i, v := range lines {
+		log.Debugf("updating line %d: %s", r.lineYOffsets[linum]+VisualLineIndex(i), v)
+		r.visualLines[r.lineYOffsets[linum]+VisualLineIndex(i)] = v
+	}
 }
 
 func (r *Renderer) MarkPosition(lineNum TextLineIndex, x RuneIndex) {
@@ -190,16 +199,36 @@ func (r *Renderer) MarkPosition(lineNum TextLineIndex, x RuneIndex) {
 		})
 		r.buffer.Lines[lineNum] = line
 	}
-	// update visual lines
-	lines := strings.Split(util.Wrap(renderLine1(line), r.wrapWidth), "\n")
-	log.Debugf("rendering line %d: %s", lineNum, lines)
-	for i, v := range lines {
-		log.Debugf("updating line %d: %s", r.lineYOffsets[lineNum]+VisualLineIndex(i), v)
-		r.visualLines[r.lineYOffsets[lineNum]+VisualLineIndex(i)] = v
-	}
+	r.updateVisualLines(lineNum, line)
 }
 
-func (r *Renderer) GetOriginYPos(visualLineNum VisualLineIndex) TextLineIndex {
+func (r *Renderer) ClearCursorStyles(linum TextLineIndex) {
+	line := r.buffer.Lines[linum]
+	segments := []Segment{}
+	for _, s := range line.Segments {
+		if s.Style != "cursor" {
+			segments = append(segments, s)
+		}
+	}
+	line.Segments = segments
+	r.buffer.Lines[linum] = line
+	r.updateVisualLines(linum, line)
+}
+
+func (r *Renderer) MarkInline(linum TextLineIndex, sx, ex RuneIndex) {
+	line := r.buffer.Lines[linum]
+	if len(line.Content) > 0 {
+		line.Segments = append(line.Segments, Segment{
+			Content: string([]rune(line.Content)[sx : ex+1]),
+			Style:   "cursor",
+			Pos:     rune2ByteIndex(line.Content, sx),
+		})
+		r.buffer.Lines[linum] = line
+	}
+	r.updateVisualLines(linum, line)
+}
+
+func (r *Renderer) GetBufferY(visualLineNum VisualLineIndex) TextLineIndex {
 	for i, v := range r.lineYOffsets {
 		if v == visualLineNum {
 			return TextLineIndex(i)
@@ -210,7 +239,7 @@ func (r *Renderer) GetOriginYPos(visualLineNum VisualLineIndex) TextLineIndex {
 	return TextLineIndex(len(r.lineYOffsets) - 1)
 }
 
-func (r *Renderer) GetOriginXPos(bufferLineNum TextLineIndex, visualXPos, visualYPos int) RuneIndex {
+func (r *Renderer) GetBufferX(bufferLineNum TextLineIndex, visualXPos, visualYPos int) RuneIndex {
 	line := r.buffer.Lines[bufferLineNum].Content
 	log.Debugf("GetOriginXPos: %d, %d, %d", bufferLineNum, visualYPos, visualXPos)
 	return RuneIndex(util.LocBeforeWraped(line, r.wrapWidth, visualXPos, visualYPos))

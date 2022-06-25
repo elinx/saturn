@@ -1,8 +1,20 @@
 package viewport
 
-import "github.com/charmbracelet/bubbles/key"
+import (
+	"time"
+
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 const spacebar = " "
+
+type TimedKeyMsg struct {
+	Key       tea.KeyMsg
+	timestamp time.Time
+}
+
+type GotoTopMsg struct{}
 
 // KeyMap defines the keybindings for the viewport. Note that you don't
 // necessary need to use keybindings at all; the viewport can be controlled
@@ -15,6 +27,11 @@ type KeyMap struct {
 	HalfPageDown key.Binding
 	Down         key.Binding
 	Up           key.Binding
+	Top          key.Binding
+	Bottom       key.Binding
+
+	ChapterForward  key.Binding
+	ChapterBackward key.Binding
 }
 
 // DefaultKeyMap returns a set of pager-like default keybindings.
@@ -37,6 +54,12 @@ func DefaultKeyMap() KeyMap {
 		),
 		Down: key.NewBinding(
 			key.WithKeys("down", "j"),
+		),
+		Top: key.NewBinding(
+			key.WithKeys("gg"),
+		),
+		Bottom: key.NewBinding(
+			key.WithKeys("G"),
 		),
 	}
 }

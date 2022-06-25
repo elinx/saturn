@@ -3,6 +3,7 @@ package viewport
 import (
 	"math"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -57,6 +58,7 @@ type Model struct {
 	initialized bool
 
 	renderer *parser.Renderer
+	lastKey  TimedKeyMsg
 }
 
 func (m *Model) linesNum() int {
@@ -323,6 +325,33 @@ func (m Model) updateAsModel(msg tea.Msg) (Model, tea.Cmd) {
 			lines := m.LineUp(1)
 			if m.HighPerformanceRendering {
 				cmd = ViewUp(m, lines)
+			}
+		case key.Matches(msg, m.KeyMap.Top):
+			lines := m.GotoTop()
+			if m.HighPerformanceRendering {
+				cmd = ViewUp(m, lines)
+			}
+		case key.Matches(msg, m.KeyMap.Bottom):
+			lines := m.GotoBottom()
+			if m.HighPerformanceRendering {
+				cmd = ViewDown(m, lines)
+			}
+		case msg.String() == "g":
+			now := time.Now()
+			if m.lastKey.Key.String() == "g" && now.Before(m.lastKey.timestamp.Add(500*time.Millisecond)) {
+				cmd = func() tea.Msg {
+					return tea.KeyMsg{
+						Type:  tea.KeyRunes,
+						Runes: []rune("gg"),
+						Alt:   false,
+					}
+				}
+				m.lastKey = TimedKeyMsg{}
+			} else {
+				m.lastKey = TimedKeyMsg{
+					Key:       msg,
+					timestamp: now,
+				}
 			}
 		}
 

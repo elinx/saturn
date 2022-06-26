@@ -1,10 +1,9 @@
-package main
+package saturn
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/elinx/saturn/pkg/epub"
-	"github.com/elinx/saturn/pkg/parser"
 	"github.com/elinx/saturn/pkg/util"
 	"github.com/elinx/saturn/pkg/viewport"
 	log "github.com/sirupsen/logrus"
@@ -12,36 +11,36 @@ import (
 
 type textModel struct {
 	book          *epub.Epub
-	renderer      *parser.Renderer
+	renderer      *Renderer
 	prevModel     tea.Model
 	viewport      viewport.Model
 	width         int
 	height        int
 	currSectionId epub.ManifestId
 
-	selectionStart parser.Pos
-	selectionEnd   parser.Pos
+	selectionStart Pos
+	selectionEnd   Pos
 	cursorReleased bool
 }
 
-func NewTextModel(book *epub.Epub, renderer *parser.Renderer,
+func NewTextModel(book *epub.Epub, renderer *Renderer,
 	currentId epub.ManifestId, prev tea.Model, width, height int) tea.Model {
 	return &textModel{
 		book:           book,
 		renderer:       renderer,
 		prevModel:      prev,
-		viewport:       viewport.New(width, height, renderer),
 		width:          width,
 		height:         height,
 		currSectionId:  currentId,
-		selectionStart: parser.InvalidPos,
-		selectionEnd:   parser.InvalidPos,
+		selectionStart: InvalidPos,
+		selectionEnd:   InvalidPos,
 		cursorReleased: true,
 	}
 }
 
 func (m *textModel) Init() tea.Cmd {
 	m.renderer.Render(m.width)
+	m.viewport = viewport.New(m.width, m.height, m.renderer.buffer)
 	m.viewport.Style = lipgloss.NewStyle()
 	return nil
 }
@@ -57,12 +56,12 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case BlockMessage:
 		id := message.(BlockMessage).ID
-		pos := m.renderer.GetVisualYPos(id)
+		pos := m.renderer.GetVisualLineNumById(id)
 		m.viewport.SetYOffset(int(pos))
 	case tea.MouseMsg:
 		switch msg.Type {
 		case tea.MouseLeft:
-			curr := parser.Pos{
+			curr := Pos{
 				X: util.MaxInt(0, msg.X-1),
 				Y: msg.Y,
 			}
@@ -88,28 +87,14 @@ func (m *textModel) View() string {
 	return m.viewport.View()
 }
 
-func (m *textModel) markPosition(p parser.Pos) {
-	log.Debugf("mark position: (%v, %v)", p.Y, p.X)
-	visualLineNum := parser.VisualLineIndex(p.Y + m.viewport.YOffset)
-	bufferLineNum := m.renderer.GetBufferY(visualLineNum)
-	visualLineStart := m.renderer.GetVisualYStart(visualLineNum)
-	originPos := m.renderer.GetBufferX(bufferLineNum, p.X, int(visualLineNum-visualLineStart))
-	m.renderer.MarkPosition(bufferLineNum, originPos)
-	log.Debugf("visual line num: %v", visualLineNum)
-	log.Debugf("mark position: (%v, %v)", bufferLineNum, originPos)
-	log.Debugf("visual line start: %v", visualLineStart)
+func (m *textModel) markPosition(p Pos) {
+	visualLineNum := VisualLineIndex(p.Y + m.viewport.YOffset)
+	m.renderer.MarkPosition(visualLineNum, VisualIndex(p.X))
 }
 
 func (m *textModel) markInline(sx, ex, sy int) {
-	visualLineNum := parser.VisualLineIndex(sy + m.viewport.YOffset)
-	bufferLineNum := m.renderer.GetBufferY(visualLineNum)
-	visualLineStart := m.renderer.GetVisualYStart(visualLineNum)
-	sxBuffer := m.renderer.GetBufferX(bufferLineNum, sx, int(visualLineNum-visualLineStart))
-	exBuffer := m.renderer.GetBufferX(bufferLineNum, ex, int(visualLineNum-visualLineStart))
-	m.renderer.MarkInline(bufferLineNum, sxBuffer, exBuffer)
-	log.Debugf("visual line num: %v", visualLineNum)
-	log.Debugf("mark position: (%v, %v)", bufferLineNum, sxBuffer)
-	log.Debugf("visual line start: %v", visualLineStart)
+	visualLineNum := VisualLineIndex(sy + m.viewport.YOffset)
+	m.renderer.MarkInline(visualLineNum, VisualIndex(sx), VisualIndex(ex))
 }
 
 // sy should be smaller than ey
@@ -121,7 +106,7 @@ func (m *textModel) markCrossLine(sx, sy, ex, ey int) {
 	m.markInline(0, ex, ey)
 }
 
-func (m *textModel) markSelection(start, end parser.Pos) {
+func (m *textModel) markSelection(start, end Pos) {
 	if start == end {
 		m.markPosition(start)
 		return
@@ -140,8 +125,8 @@ func (m *textModel) markSelection(start, end parser.Pos) {
 	m.markCrossLine(sx, sy, ex, ey)
 }
 
-func (m *textModel) clearCursor(start, end parser.Pos) {
-	if start == parser.InvalidPos || end == parser.InvalidPos {
+func (m *textModel) clearCursor(start, end Pos) {
+	if start == InvalidPos || end == InvalidPos {
 		return
 	}
 	if start.Y > end.Y {
@@ -149,8 +134,7 @@ func (m *textModel) clearCursor(start, end parser.Pos) {
 	}
 	sy, ey := start.Y, end.Y
 	for y := sy; y <= ey; y++ {
-		visualLineNum := parser.VisualLineIndex(y + m.viewport.YOffset)
-		bufferLineNum := m.renderer.GetBufferY(visualLineNum)
-		m.renderer.ClearCursorStyles(bufferLineNum)
+		visualLineNum := VisualLineIndex(y + m.viewport.YOffset)
+		m.renderer.ClearCursorStyles(visualLineNum)
 	}
 }

@@ -109,6 +109,29 @@ func LocBeforeWraped(line string, limit int, vx, vy int) int {
 	return x
 }
 
+func Len(line string) int {
+	count := 0
+	ansi := false
+	for len(line) > 0 {
+		rune, size := utf8.DecodeRuneInString(line)
+		if rune == '\x1b' {
+			ansi = true
+			line = line[size:]
+			continue
+		}
+		if ansi {
+			if IsTerminator(rune) {
+				ansi = false
+			}
+			line = line[size:]
+			continue
+		}
+		count++
+		line = line[size:]
+	}
+	return count
+}
+
 func MinInt(a, b int) int {
 	if a < b {
 		return a

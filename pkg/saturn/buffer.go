@@ -1,7 +1,9 @@
 package saturn
 
 import (
+	"github.com/charmbracelet/lipgloss"
 	"github.com/elinx/saturn/pkg/epub"
+	"github.com/zyedidia/go-runewidth"
 )
 
 // RuneIndex returns the index of the rune in the given string
@@ -35,6 +37,51 @@ type Line struct {
 	Style    string
 }
 
+type VisualRune struct {
+	C     rune
+	Style lipgloss.Style
+}
+
+type VisualLine struct {
+	// index in in the original buffer, some visual lines
+	// may mapping to the same buffer line because of the
+	// line wrapping.
+	BufferLinum BufferLineIndex
+
+	// rendered content
+	Content string
+	Runes   []VisualRune
+
+	Dirty bool
+}
+
+func (v *VisualLine) MarkPosition(vx VisualIndex) {
+	v.Dirty = true
+	pos := 0
+	for i, vr := range v.Runes {
+		width := runewidth.RuneWidth(vr.C)
+		if pos+width > int(vx) {
+			v.Runes[i].Style.Reverse(true)
+			return
+		}
+		pos += width
+	}
+}
+
+func (v *VisualLine) MarkLine() {
+	v.Dirty = true
+	for i := range v.Runes {
+		v.Runes[i].Style.Reverse(true)
+	}
+}
+
+func (v *VisualLine) ClearLine() {
+	v.Dirty = true
+	for i := range v.Runes {
+		v.Runes[i].Style.Reverse(false)
+	}
+}
+
 // Buffer is the ebook one to one mapping
 type Buffer struct {
 	renderer *Renderer
@@ -49,14 +96,14 @@ type Buffer struct {
 	visualLineOffset []VisualLineIndex
 
 	// visualLines are lines that have been rendered.
-	visualLines []string
+	visualLines []VisualLine
 }
 
 func NewBuffer() *Buffer {
 	return &Buffer{
 		Lines:       []Line{},
 		BlockPos:    make(map[epub.ManifestId]BufferLineIndex),
-		visualLines: make([]string, 0),
+		visualLines: make([]VisualLine, 0),
 	}
 }
 
@@ -70,8 +117,22 @@ func (b *Buffer) VisualLines(start, end int) []string {
 	return b.getVisualLines(VisualLineIndex(start), VisualLineIndex(end))
 }
 
-func (b *Buffer) getVisualLines(start, end VisualLineIndex) []string {
-	return b.visualLines[start:end]
+func (b *Buffer) getVisualLines(start, end VisualLineIndex) (res []string) {
+	for i, line := range b.visualLines[start:end] {
+		linum := VisualLineIndex(i) + start
+		content := ""
+		if line.Dirty {
+			for _, vr := range line.Runes {
+				content += vr.Style.String()
+			}
+			b.visualLines[linum].Content = content
+			b.visualLines[linum].Dirty = false
+		} else {
+			content = line.Content
+		}
+		res = append(res, content)
+	}
+	return
 }
 
 func (b *Buffer) GetBufferLineNumById(id epub.ManifestId) BufferLineIndex {

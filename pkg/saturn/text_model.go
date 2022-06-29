@@ -61,16 +61,17 @@ func (m *textModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseMsg:
 		switch msg.Type {
 		case tea.MouseLeft:
+			// So strange x start from one while y start from zero
 			curr := Pos{
 				X: util.MaxInt(0, msg.X-1),
 				Y: msg.Y,
 			}
 			log.Debugf("mouse left clicked: %v", curr)
+			clearStart := m.selectionStart
 			if m.cursorReleased {
-				m.clearCursor(m.selectionStart, m.selectionEnd)
 				m.selectionStart = curr
 			}
-			m.clearCursor(m.selectionStart, m.selectionEnd)
+			m.clearCursor(clearStart, m.selectionEnd)
 			m.markSelection(m.selectionStart, curr)
 			m.selectionEnd = curr
 			m.cursorReleased = false

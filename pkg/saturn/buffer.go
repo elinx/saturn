@@ -43,7 +43,7 @@ type VisualRune struct {
 }
 
 type VisualLine struct {
-	// index in in the original buffer, some visual lines
+	// index in the original buffer, some visual lines
 	// may mapping to the same buffer line because of the
 	// line wrapping.
 	BufferLinum BufferLineIndex
@@ -80,6 +80,19 @@ func (v *VisualLine) ClearLine() {
 	for i := range v.Runes {
 		v.Runes[i].Style.Reverse(false)
 	}
+}
+
+func (v *VisualLine) Replace(content string) {
+	v.Dirty = false
+	v.Content = content
+}
+
+func (v *VisualLine) Render() string {
+	content := ""
+	for _, vr := range v.Runes {
+		content += vr.Style.String()
+	}
+	return content
 }
 
 // Buffer is the ebook one to one mapping
@@ -120,17 +133,11 @@ func (b *Buffer) VisualLines(start, end int) []string {
 func (b *Buffer) getVisualLines(start, end VisualLineIndex) (res []string) {
 	for i, line := range b.visualLines[start:end] {
 		linum := VisualLineIndex(i) + start
-		content := ""
 		if line.Dirty {
-			for _, vr := range line.Runes {
-				content += vr.Style.String()
-			}
-			b.visualLines[linum].Content = content
-			b.visualLines[linum].Dirty = false
-		} else {
-			content = line.Content
+			content := line.Render()
+			b.visualLines[linum].Replace(content)
 		}
-		res = append(res, content)
+		res = append(res, b.visualLines[linum].Content)
 	}
 	return
 }

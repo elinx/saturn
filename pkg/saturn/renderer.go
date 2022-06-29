@@ -109,3 +109,7 @@ func (r *Renderer) MarkInline(vy VisualLineIndex, vxs, vxe VisualIndex) {
 		r.MarkPosition(vy, x)
 	}
 }
+
+func (r *Renderer) MarkLine(vy VisualLineIndex) {
+	r.buffer.visualLines[vy].MarkLine()
+}

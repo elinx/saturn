@@ -98,11 +98,16 @@ func (m *textModel) markInline(sx, ex, sy int) {
 	m.renderer.MarkInline(visualLineNum, VisualIndex(sx), VisualIndex(ex))
 }
 
+func (m *textModel) markLine(vy int) {
+	visualLineNum := VisualLineIndex(vy + m.viewport.YOffset)
+	m.renderer.MarkLine(visualLineNum)
+}
+
 // sy should be smaller than ey
 func (m *textModel) markCrossLine(sx, sy, ex, ey int) {
 	m.markInline(sx, m.width-1, sy)
 	for y := sy + 1; y < ey; y++ {
-		m.markInline(0, m.width-1, y)
+		m.markLine(y)
 	}
 	m.markInline(0, ex, ey)
 }

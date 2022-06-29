@@ -8,12 +8,16 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/elinx/saturn/pkg/parser"
 )
+
+type IBuffer interface {
+	VisualLinesNum() int
+	VisualLines(int, int) []string
+}
 
 // New returns a new model with the given width and height as well as default
 // keymappings.
-func New(width, height int, renderer *parser.Renderer) (m Model) {
+func New(width, height int, renderer IBuffer) (m Model) {
 	m.Width = width
 	m.Height = height
 	m.renderer = renderer
@@ -57,7 +61,7 @@ type Model struct {
 
 	initialized bool
 
-	renderer *parser.Renderer
+	renderer IBuffer
 	lastKey  TimedKeyMsg
 }
 
@@ -129,8 +133,7 @@ func (m Model) visibleLines() (lines []string) {
 	if m.linesNum() > 0 {
 		top := max(0, m.YOffset)
 		bottom := clamp(m.YOffset+m.Height, top, m.linesNum())
-		// lines = m.lines[top:bottom]
-		lines = m.renderer.VisualLines(parser.VisualLineIndex(top), parser.VisualLineIndex(bottom))
+		lines = m.renderer.VisualLines(top, bottom)
 	}
 	return lines
 }

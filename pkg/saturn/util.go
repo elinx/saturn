@@ -1,4 +1,4 @@
-package parser
+package saturn
 
 type Pos struct {
 	X, Y int

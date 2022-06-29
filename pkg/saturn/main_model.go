@@ -1,10 +1,9 @@
-package main
+package saturn
 
 import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/elinx/saturn/pkg/epub"
-	"github.com/elinx/saturn/pkg/parser"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -31,8 +30,8 @@ func newItems(book *epub.Epub) []list.Item {
 	return content
 }
 
-func NewModel(book *epub.Epub, renderer *parser.Renderer) tea.Model {
-	return &model{
+func NewMainModel(book *epub.Epub, renderer *Renderer) tea.Model {
+	return &mainModel{
 		book:     book,
 		renderer: renderer,
 		tocModel: list.New(newItems(book), list.DefaultDelegate{
@@ -42,16 +41,16 @@ func NewModel(book *epub.Epub, renderer *parser.Renderer) tea.Model {
 	}
 }
 
-type model struct {
+type mainModel struct {
 	book      *epub.Epub
-	renderer  *parser.Renderer
+	renderer  *Renderer
 	tocModel  list.Model
 	textModel tea.Model
 	width     int
 	height    int
 }
 
-func (m *model) Init() tea.Cmd {
+func (m *mainModel) Init() tea.Cmd {
 	return nil
 }
 
@@ -60,7 +59,7 @@ type BlockMessage struct {
 	Msg string
 }
 
-func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+func (m *mainModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := message.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -80,7 +79,8 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		log.Debugf("window size changed: ", msg.Width, msg.Height)
 		m.width = msg.Width
 		m.height = msg.Height
-		m.textModel = NewTextModel(m.book, m.renderer, m.tocModel.SelectedItem().(item).Src(), m, m.width, m.height)
+		m.textModel = NewTextModel(m.book, m.renderer,
+			m.tocModel.SelectedItem().(item).Src(), m, m.width, m.height)
 		m.textModel.Init()
 	}
 
@@ -89,6 +89,6 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *model) View() string {
+func (m *mainModel) View() string {
 	return m.tocModel.View()
 }

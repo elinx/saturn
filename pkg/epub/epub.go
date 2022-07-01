@@ -169,6 +169,10 @@ func (epub *Epub) Close() {
 	epub.readercloser.Close()
 }
 
+func (epub *Epub) Title() string {
+	return epub.Rootfile.Metadata.Title
+}
+
 // getContentByFilePath return file content by full filepath(relative to rootfile)
 func (epub *Epub) getContentByFilePath(filepath string) (string, error) {
 	if f, found := epub.Files[filepath]; !found {

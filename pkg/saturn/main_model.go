@@ -34,10 +34,6 @@ func NewMainModel(book *epub.Epub, renderer *Renderer) tea.Model {
 	return &mainModel{
 		book:     book,
 		renderer: renderer,
-		tocModel: list.New(newItems(book), list.DefaultDelegate{
-			ShowDescription: false,
-			Styles:          list.NewDefaultItemStyles(),
-		}, 30, 30),
 	}
 }
 
@@ -79,6 +75,11 @@ func (m *mainModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		log.Debugf("window size changed: ", msg.Width, msg.Height)
 		m.width = msg.Width
 		m.height = msg.Height
+		m.tocModel = list.New(newItems(m.book), list.DefaultDelegate{
+			ShowDescription: false,
+			Styles:          list.NewDefaultItemStyles(),
+		}, m.width, m.height)
+		m.tocModel.Title = m.book.Title()
 		m.textModel = NewTextModel(m.book, m.renderer,
 			m.tocModel.SelectedItem().(item).Src(), m, m.width, m.height)
 		m.textModel.Init()

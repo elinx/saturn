@@ -3,6 +3,7 @@ package saturn
 import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/elinx/saturn/pkg/db"
 	"github.com/elinx/saturn/pkg/epub"
 	log "github.com/sirupsen/logrus"
 )
@@ -30,19 +31,17 @@ func newItems(book *epub.Epub) []list.Item {
 	return content
 }
 
-func NewMainModel(book *epub.Epub, renderer *Renderer) tea.Model {
+func NewMainModel(book *epub.Epub, db *db.DB, renderer *Renderer) tea.Model {
 	return &mainModel{
 		book:     book,
+		db:       db,
 		renderer: renderer,
-		tocModel: list.New(newItems(book), list.DefaultDelegate{
-			ShowDescription: false,
-			Styles:          list.NewDefaultItemStyles(),
-		}, 30, 30),
 	}
 }
 
 type mainModel struct {
 	book      *epub.Epub
+	db        *db.DB
 	renderer  *Renderer
 	tocModel  list.Model
 	textModel tea.Model
@@ -79,7 +78,12 @@ func (m *mainModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		log.Debugf("window size changed: ", msg.Width, msg.Height)
 		m.width = msg.Width
 		m.height = msg.Height
-		m.textModel = NewTextModel(m.book, m.renderer,
+		m.tocModel = list.New(newItems(m.book), list.DefaultDelegate{
+			ShowDescription: false,
+			Styles:          list.NewDefaultItemStyles(),
+		}, m.width, m.height)
+		m.tocModel.Title = m.book.Title()
+		m.textModel = NewTextModel(m.book, m.db, m.renderer,
 			m.tocModel.SelectedItem().(item).Src(), m, m.width, m.height)
 		m.textModel.Init()
 	}

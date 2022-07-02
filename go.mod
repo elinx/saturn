@@ -6,8 +6,10 @@ require (
 	github.com/charmbracelet/bubbles v0.10.3
 	github.com/charmbracelet/bubbletea v0.20.0
 	github.com/charmbracelet/lipgloss v0.4.0
+	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.11.1-0.20220212125758-44cd13922739
+	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/zyedidia/go-runewidth v0.0.12
 	golang.org/x/net v0.0.0-20220513224357-95641704303c

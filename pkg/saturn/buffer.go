@@ -6,6 +6,14 @@ import (
 	"github.com/zyedidia/go-runewidth"
 )
 
+type IVisualVisiter interface {
+	VisitBufferPrev(*Buffer) bool
+	VisitBufferPost(*Buffer) bool
+	VisitLinePrev(*VisualLine) bool
+	VisitLinePost(*VisualLine) bool
+	VisitRune(*VisualRune) bool
+}
+
 // RuneIndex returns the index of the rune in the given string
 type RuneIndex int
 
@@ -42,6 +50,10 @@ type VisualRune struct {
 	Style lipgloss.Style
 }
 
+func (r *VisualRune) Accept(visitor IVisualVisiter) {
+	visitor.VisitRune(r)
+}
+
 type VisualLine struct {
 	// index in the original buffer, some visual lines
 	// may mapping to the same buffer line because of the
@@ -55,24 +67,70 @@ type VisualLine struct {
 	Dirty bool
 }
 
-func (v *VisualLine) MarkPosition(vx VisualIndex) {
+func (v *VisualLine) Accept(visitor IVisualVisiter) {
+	dirty := false
+	dirty = dirty || visitor.VisitLinePrev(v)
+	for _, vr := range v.Runes {
+		dirty = dirty || visitor.VisitRune(&vr)
+	}
+	dirty = dirty || visitor.VisitLinePost(v)
+	v.Dirty = dirty
+}
+
+func (v *VisualLine) MarkPosition(vx VisualIndex) string {
 	v.Dirty = true
 	pos := 0
 	for i, vr := range v.Runes {
 		width := runewidth.RuneWidth(vr.C)
 		if pos+width > int(vx) {
 			v.Runes[i].Style.Reverse(true)
-			return
+			return string(v.Runes[i].C)
 		}
 		pos += width
 	}
+	return ""
 }
 
-func (v *VisualLine) MarkLine() {
+func (v *VisualLine) MarkInline(start, end VisualIndex) string {
 	v.Dirty = true
+	content := ""
+	prev := VisualIndex(-1)
+	sameRune := func(curr, prev int) bool {
+		if prev == -1 {
+			return false
+		}
+		pos := 0
+		for _, vr := range v.Runes {
+			width := runewidth.RuneWidth(vr.C)
+			if curr >= pos && curr < pos+width &&
+				prev >= pos && prev < pos+width {
+				return true
+			}
+			if pos > curr {
+				return false
+			}
+			pos += width
+		}
+		return false
+	}
+	for x := start; x <= end; x++ {
+		s := v.MarkPosition(x)
+		if !sameRune(int(x), int(prev)) {
+			content += s
+		}
+		prev = x
+	}
+	return content
+}
+
+func (v *VisualLine) MarkLine() string {
+	v.Dirty = true
+	content := ""
 	for i := range v.Runes {
+		content += string(v.Runes[i].C)
 		v.Runes[i].Style.Reverse(true)
 	}
+	return content
 }
 
 func (v *VisualLine) ClearLine() {
@@ -171,4 +229,44 @@ func (b *Buffer) GetBufferLineNumByVisual(visualLineNum VisualLineIndex) BufferL
 		}
 	}
 	return BufferLineIndex(len(b.visualLineOffset) - 1)
+}
+
+type Visitor struct {
+	Style   lipgloss.Style
+	Content string
+	Start   int
+	End     int
+}
+
+func (v *Visitor) VisitBufferPrev(b *Buffer) bool {
+	return false
+}
+
+func (v *Visitor) VisitBufferPost(b *Buffer) bool {
+	return false
+}
+
+func (v *Visitor) VisitLinePrev(l *VisualLine) bool {
+	return false
+}
+
+func (v *Visitor) VisitLinePost(l *VisualLine) bool {
+	return false
+}
+
+func (v *Visitor) VisitRune(r *VisualRune) bool {
+	v.Content += string(r.C)
+	r.Style = r.Style.Reverse(true)
+	return true
+}
+
+func (b *Buffer) Accept(visitor IVisualVisiter) {
+	for _, line := range b.visualLines {
+		line.Accept(visitor)
+	}
+}
+
+func visit(b *Buffer) {
+	visitor := &Visitor{}
+	b.Accept(visitor)
 }

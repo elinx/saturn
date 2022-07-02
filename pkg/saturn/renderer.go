@@ -91,25 +91,24 @@ func (r *Renderer) GetVisualLineNumById(id epub.ManifestId) VisualLineIndex {
 	return r.buffer.GetVisualLineNumById(id)
 }
 
-func (r *Renderer) MarkPosition(vy VisualLineIndex, vx VisualIndex) {
+func (r *Renderer) MarkPosition(vy VisualLineIndex, vx VisualIndex) string {
 	log.Debugf("MarkPosition: %d, %d", vy, vx)
 	// TODO: show one space if the cursor is at an empty line
 	vy = VisualLineIndex(util.MinInt(int(vy), len(r.buffer.visualLines)))
 	if len(r.buffer.visualLines[vy].Content) > 0 {
-		r.buffer.visualLines[vy].MarkPosition(vx)
+		return r.buffer.visualLines[vy].MarkPosition(vx)
 	}
+	return ""
 }
 
 func (r *Renderer) ClearCursorStyles(vy VisualLineIndex) {
 	r.buffer.visualLines[vy].ClearLine()
 }
 
-func (r *Renderer) MarkInline(vy VisualLineIndex, vxs, vxe VisualIndex) {
-	for x := vxs; x <= vxe; x++ {
-		r.MarkPosition(vy, x)
-	}
+func (r *Renderer) MarkInline(vy VisualLineIndex, vxs, vxe VisualIndex) string {
+	return r.buffer.visualLines[vy].MarkInline(vxs, vxe)
 }
 
-func (r *Renderer) MarkLine(vy VisualLineIndex) {
-	r.buffer.visualLines[vy].MarkLine()
+func (r *Renderer) MarkLine(vy VisualLineIndex) string {
+	return r.buffer.visualLines[vy].MarkLine()
 }

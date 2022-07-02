@@ -77,24 +77,60 @@ func (v *VisualLine) Accept(visitor IVisualVisiter) {
 	v.Dirty = dirty
 }
 
-func (v *VisualLine) MarkPosition(vx VisualIndex) {
+func (v *VisualLine) MarkPosition(vx VisualIndex) string {
 	v.Dirty = true
 	pos := 0
 	for i, vr := range v.Runes {
 		width := runewidth.RuneWidth(vr.C)
 		if pos+width > int(vx) {
 			v.Runes[i].Style.Reverse(true)
-			return
+			return string(v.Runes[i].C)
 		}
 		pos += width
 	}
+	return ""
 }
 
-func (v *VisualLine) MarkLine() {
+func (v *VisualLine) MarkInline(start, end VisualIndex) string {
 	v.Dirty = true
+	content := ""
+	prev := VisualIndex(-1)
+	sameRune := func(curr, prev int) bool {
+		if prev == -1 {
+			return false
+		}
+		pos := 0
+		for _, vr := range v.Runes {
+			width := runewidth.RuneWidth(vr.C)
+			if curr >= pos && curr < pos+width &&
+				prev >= pos && prev < pos+width {
+				return true
+			}
+			if pos > curr {
+				return false
+			}
+			pos += width
+		}
+		return false
+	}
+	for x := start; x <= end; x++ {
+		s := v.MarkPosition(x)
+		if !sameRune(int(x), int(prev)) {
+			content += s
+		}
+		prev = x
+	}
+	return content
+}
+
+func (v *VisualLine) MarkLine() string {
+	v.Dirty = true
+	content := ""
 	for i := range v.Runes {
+		content += string(v.Runes[i].C)
 		v.Runes[i].Style.Reverse(true)
 	}
+	return content
 }
 
 func (v *VisualLine) ClearLine() {

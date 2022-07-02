@@ -4,6 +4,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/elinx/saturn/pkg/db"
 	"github.com/elinx/saturn/pkg/epub"
 	_ "github.com/elinx/saturn/pkg/logconfig"
 	"github.com/elinx/saturn/pkg/saturn"
@@ -18,13 +19,23 @@ func main() {
 	}
 	defer book.Close()
 
+	db, err := db.NewDb("db.sqlite")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	err = db.Run(book.Title())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	parser := saturn.NewParser(book)
 	if err := parser.Parse(); err != nil {
 		log.Fatal(err)
 	}
 	renderer := saturn.NewRender(book, parser.GetBuffer())
 
-	program := tea.NewProgram(saturn.NewMainModel(book, renderer),
+	program := tea.NewProgram(saturn.NewMainModel(book, db, renderer),
 		tea.WithAltScreen(), tea.WithMouseAllMotion())
 	if err := program.Start(); err != nil {
 		panic(err)

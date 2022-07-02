@@ -6,6 +6,14 @@ import (
 	"github.com/zyedidia/go-runewidth"
 )
 
+type IVisualVisiter interface {
+	VisitBufferPrev(*Buffer) bool
+	VisitBufferPost(*Buffer) bool
+	VisitLinePrev(*VisualLine) bool
+	VisitLinePost(*VisualLine) bool
+	VisitRune(*VisualRune) bool
+}
+
 // RuneIndex returns the index of the rune in the given string
 type RuneIndex int
 
@@ -42,6 +50,10 @@ type VisualRune struct {
 	Style lipgloss.Style
 }
 
+func (r *VisualRune) Accept(visitor IVisualVisiter) {
+	visitor.VisitRune(r)
+}
+
 type VisualLine struct {
 	// index in the original buffer, some visual lines
 	// may mapping to the same buffer line because of the
@@ -53,6 +65,16 @@ type VisualLine struct {
 	Runes   []VisualRune
 
 	Dirty bool
+}
+
+func (v *VisualLine) Accept(visitor IVisualVisiter) {
+	dirty := false
+	dirty = dirty || visitor.VisitLinePrev(v)
+	for _, vr := range v.Runes {
+		dirty = dirty || visitor.VisitRune(&vr)
+	}
+	dirty = dirty || visitor.VisitLinePost(v)
+	v.Dirty = dirty
 }
 
 func (v *VisualLine) MarkPosition(vx VisualIndex) {
@@ -171,4 +193,44 @@ func (b *Buffer) GetBufferLineNumByVisual(visualLineNum VisualLineIndex) BufferL
 		}
 	}
 	return BufferLineIndex(len(b.visualLineOffset) - 1)
+}
+
+type Visitor struct {
+	Style   lipgloss.Style
+	Content string
+	Start   int
+	End     int
+}
+
+func (v *Visitor) VisitBufferPrev(b *Buffer) bool {
+	return false
+}
+
+func (v *Visitor) VisitBufferPost(b *Buffer) bool {
+	return false
+}
+
+func (v *Visitor) VisitLinePrev(l *VisualLine) bool {
+	return false
+}
+
+func (v *Visitor) VisitLinePost(l *VisualLine) bool {
+	return false
+}
+
+func (v *Visitor) VisitRune(r *VisualRune) bool {
+	v.Content += string(r.C)
+	r.Style = r.Style.Reverse(true)
+	return true
+}
+
+func (b *Buffer) Accept(visitor IVisualVisiter) {
+	for _, line := range b.visualLines {
+		line.Accept(visitor)
+	}
+}
+
+func visit(b *Buffer) {
+	visitor := &Visitor{}
+	b.Accept(visitor)
 }

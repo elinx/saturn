@@ -75,7 +75,7 @@ func (m *mainModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case tea.WindowSizeMsg:
-		log.Debugf("window size changed: ", msg.Width, msg.Height)
+		log.Debug("window size changed: ", msg.Width, msg.Height)
 		m.width = msg.Width
 		m.height = msg.Height
 		m.tocModel = list.New(newItems(m.book), list.DefaultDelegate{

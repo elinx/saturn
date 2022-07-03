@@ -1,6 +1,8 @@
 package saturn
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/lipgloss"
 	"github.com/elinx/saturn/pkg/epub"
 	"github.com/zyedidia/go-runewidth"
@@ -48,6 +50,8 @@ type Line struct {
 type VisualRune struct {
 	C     rune
 	Style lipgloss.Style
+	VC    string
+	Dirty bool
 }
 
 func (r *VisualRune) Accept(visitor IVisualVisiter) {
@@ -63,6 +67,10 @@ type VisualLine struct {
 	// rendered content
 	Content string
 	Runes   []VisualRune
+
+	// rendered line number
+	LineNum    string
+	LinumStyle lipgloss.Style
 
 	Dirty bool
 }
@@ -146,11 +154,16 @@ func (v *VisualLine) Replace(content string) {
 }
 
 func (v *VisualLine) Render() string {
-	content := ""
+	var content strings.Builder
+	// content.WriteString(v.LineNum)
 	for _, vr := range v.Runes {
-		content += vr.Style.String()
+		if vr.Dirty {
+			content.WriteString(vr.Style.String())
+		} else {
+			content.WriteString(vr.VC)
+		}
 	}
-	return content
+	return content.String()
 }
 
 // Buffer is the ebook one to one mapping
@@ -183,6 +196,10 @@ func (b *Buffer) VisualLinesNum() int {
 	return len(b.visualLines)
 }
 
+func (b *Buffer) LinesNum() int {
+	return len(b.Lines)
+}
+
 // VisualLines return a portion of visual lines in a range
 func (b *Buffer) VisualLines(start, end int) []string {
 	return b.getVisualLines(VisualLineIndex(start), VisualLineIndex(end))
@@ -195,7 +212,7 @@ func (b *Buffer) getVisualLines(start, end VisualLineIndex) (res []string) {
 			content := line.Render()
 			b.visualLines[linum].Replace(content)
 		}
-		res = append(res, b.visualLines[linum].Content)
+		res = append(res, b.visualLines[linum].LineNum+b.visualLines[linum].Content)
 	}
 	return
 }

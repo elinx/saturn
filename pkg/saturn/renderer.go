@@ -1,6 +1,7 @@
 package saturn
 
 import (
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -13,7 +14,8 @@ type Renderer struct {
 	book   *epub.Epub
 	buffer *Buffer
 
-	wrapWidth int
+	wrapWidth  int
+	linumWidth int
 }
 
 func NewRender(book *epub.Epub, buffer *Buffer) *Renderer {
@@ -28,7 +30,8 @@ func NewRender(book *epub.Epub, buffer *Buffer) *Renderer {
 // Render iterates over the buffer and renders each line to the screen.
 func (r *Renderer) Render(width int) {
 	lineNumAccum := 0
-	r.wrapWidth = width
+	r.linumWidth = len(strconv.Itoa(len(r.buffer.Lines)))
+	r.wrapWidth = width - r.linumWidth
 	for linum := range r.buffer.Lines {
 		r.buffer.visualLineOffset = append(r.buffer.visualLineOffset, VisualLineIndex(lineNumAccum))
 		visualLines := r.RenderLine(BufferLineIndex(linum))
@@ -37,7 +40,19 @@ func (r *Renderer) Render(width int) {
 	}
 }
 
+func (r *Renderer) RenderLinum(linum BufferLineIndex) string {
+	line := strconv.Itoa(int(linum))
+	line = strings.Repeat(" ", r.linumWidth-len(line)) + line
+	return linumStyle.SetString(line).String()
+}
+
+func (r *Renderer) RenderEmptyLinum() string {
+	return linumStyle.SetString(strings.Repeat(" ", r.linumWidth)).String()
+}
+
 func (r *Renderer) RenderLine(linum BufferLineIndex) []VisualLine {
+	emptyLinum := r.RenderEmptyLinum()
+	rlinum := r.RenderLinum(linum)
 	renderedLine := ""
 	line := r.buffer.Lines[linum]
 	content := line.Content
@@ -59,19 +74,35 @@ func (r *Renderer) RenderLine(linum BufferLineIndex) []VisualLine {
 		runes = append(runes, VisualRune{
 			C:     rune,
 			Style: styled,
+			VC:    styled.String(),
+			Dirty: false,
 		})
 	}
 	visualLines := strings.Split(util.Wrap(renderedLine, r.wrapWidth), "\n")
 	ret := []VisualLine{}
 	start := 0
-	for _, vl := range visualLines {
+	for i, vl := range visualLines {
+		ls := emptyLinum
+		if i == 0 {
+			ls = rlinum
+		}
 		stop := start + util.Len(vl)
+		if len(runes) > 0 {
+			runes[start].Dirty = true
+		}
 		ret = append(ret,
 			VisualLine{
 				BufferLinum: linum,
 				Content:     vl,
 				Runes:       runes[start:stop],
-				Dirty:       false,
+				// The wrap may cause the style left at the end of last line, then the linum style will cancel
+				// the style of the first character in this line which will cause it's style to be lost.
+				// But make the whole line dirty will cause the whole line to be rendered again which is
+				// a waste of time. This could be solved by either rewriting the Wrap method or adding a
+				// dirty flag to the VisualRune struct.
+				Dirty:      true,
+				LineNum:    ls,
+				LinumStyle: linumStyle,
 			},
 		)
 		start = stop

@@ -6,6 +6,10 @@ import (
 
 var DefaultStyle = lipgloss.NewStyle()
 
+var linumStyle lipgloss.Style = lipgloss.NewStyle().
+	Background(lipgloss.Color("#333")).
+	Foreground(lipgloss.Color("#ccc"))
+
 var styles = map[string]lipgloss.Style{
 	"p": DefaultStyle,
 }

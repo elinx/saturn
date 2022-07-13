@@ -79,6 +79,11 @@ func (r *Renderer) RenderLine(linum BufferLineIndex) []VisualLine {
 		})
 	}
 	visualLines := strings.Split(util.Wrap(renderedLine, r.wrapWidth), "\n")
+
+	// add empty line at the end of the paragraph with no line number
+	visualLines = append(visualLines, "\n")
+	runes = append(runes, VisualRune{C: '\n', Style: DefaultStyle, VC: "\n"})
+
 	ret := []VisualLine{}
 	start := 0
 	for i, vl := range visualLines {

@@ -91,6 +91,7 @@ func (v *VisualLine) MarkPosition(vx VisualIndex) string {
 	for i, vr := range v.Runes {
 		width := runewidth.RuneWidth(vr.C)
 		if pos+width > int(vx) {
+			v.Runes[i].Dirty = true
 			v.Runes[i].Style.Reverse(true)
 			return string(v.Runes[i].C)
 		}

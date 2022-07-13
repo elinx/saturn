@@ -156,6 +156,22 @@ func TestParse(t *testing.T) {
 				BlockPos: map[epub.ManifestId]BufferLineIndex{},
 			},
 		},
+		{
+			name: "url embeded in p",
+			html: `<p>The way you can go <a href="http://www.google.com">google</a></p>`,
+			expect: &Buffer{
+				Lines: []Line{
+					{
+						Content: "The way you can go google",
+						Segments: []Segment{
+							{Content: "The way you can go ", Style: "", Pos: 0},
+							{Content: "google", Style: "a", Pos: 19},
+						},
+						Style: "p",
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testcases {
 		render := NewParser(nil)

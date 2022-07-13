@@ -96,6 +96,8 @@ func (p *Parser) parse2(n *html.Node) (*Segment, error) {
 			return nil, nil
 		}
 		return &Segment{lineContent, n.Data, 0}, nil
+	case "a":
+		return &Segment{lineContent, "a", 0}, nil
 	default:
 		p.buffer.Lines = append(p.buffer.Lines, Line{lineContent, segments, n.Data})
 	}
